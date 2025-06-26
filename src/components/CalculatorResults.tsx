@@ -34,25 +34,41 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
     </Card>
   );
 
+  // Calculate total energy and percentage difference
+  const totalCalculatedEnergy = results.envelopeHeatGain + results.envelopeHeatLoss + 
+                               results.infiltrationHeatGain + results.infiltrationHeatLoss + 
+                               results.solarHeatGain;
+  
+  const percentageDifference = ((totalCalculatedEnergy - inputs.currentEnergyLoad) / inputs.currentEnergyLoad * 100);
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Calculated Values Summary</CardTitle>
+          <CardTitle>Energy Comparison</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="font-semibold">Total Glazing Area:</span>
-              <div>{results.totalGlazingArea.toFixed(1)} ft²</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">
+                {inputs.currentEnergyLoad.toLocaleString()}
+              </div>
+              <div className="text-sm text-muted-foreground">Current Energy Load (Qc)</div>
+              <div className="text-xs">Btu/year</div>
             </div>
-            <div>
-              <span className="font-semibold">Formula Used:</span>
-              <div>Ag = Agn + Ags + Age + Agw</div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">
+                {totalCalculatedEnergy.toLocaleString()}
+              </div>
+              <div className="text-sm text-muted-foreground">Calculated Energy Load</div>
+              <div className="text-xs">Btu/year</div>
             </div>
-            <div>
-              <span className="font-semibold">Components:</span>
-              <div>N:{inputs.northGlazingArea} + S:{inputs.southGlazingArea} + E:{inputs.eastGlazingArea} + W:{inputs.westGlazingArea}</div>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${percentageDifference >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {percentageDifference >= 0 ? '+' : ''}{percentageDifference.toFixed(1)}%
+              </div>
+              <div className="text-sm text-muted-foreground">Energy Difference</div>
+              <div className="text-xs">{percentageDifference >= 0 ? 'Increase' : 'Decrease'} from Current</div>
             </div>
           </div>
         </CardContent>

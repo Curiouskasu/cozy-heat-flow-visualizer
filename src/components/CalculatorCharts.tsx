@@ -80,10 +80,10 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
   ];
 
   const glazingData = [
-    { name: 'North', area: inputs.northGlazingArea, color: '#8b5cf6' },
-    { name: 'South', area: inputs.southGlazingArea, color: '#f59e0b' },
-    { name: 'East', area: inputs.eastGlazingArea, color: '#10b981' },
-    { name: 'West', area: inputs.westGlazingArea, color: '#ef4444' },
+    { name: 'North', area: inputs.northGlazingArea, color: '#000000' },
+    { name: 'South', area: inputs.southGlazingArea, color: '#333333' },
+    { name: 'East', area: inputs.eastGlazingArea, color: '#666666' },
+    { name: 'West', area: inputs.westGlazingArea, color: '#999999' },
   ];
 
   const envelopeComponentsData = [
@@ -115,7 +115,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     }
   ];
 
-  // R-value analysis data for opaque walls
+  // R-value analysis data for opaque walls (R-5 to R-40, increment 5)
   const rValueAnalysisData = [];
   const baselineHeatLoss = (results.totalGlazingArea / inputs.glazingRValue) +
                           (inputs.soffitArea / inputs.soffitRValue) +
@@ -125,7 +125,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                           (inputs.opaqueWallArea / 0.1); // R-0 approximation
   const baselineEnvelopeHeatLoss = baselineHeatLoss * inputs.heatingDegreeDays;
 
-  for (let r = 5; r <= 25; r += 2.5) {
+  for (let r = 5; r <= 40; r += 5) {
     const totalUAValue = (results.totalGlazingArea / inputs.glazingRValue) +
                         (inputs.soffitArea / inputs.soffitRValue) +
                         (inputs.basementArea / inputs.basementRValue) +
@@ -143,12 +143,12 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     });
   }
 
-  // Glazing R-value analysis
-  const glazingRValueAnalysisData = [];
-  const baselineGlazingHeatLoss = (results.totalGlazingArea / 0.1) * inputs.heatingDegreeDays; // R-0 approximation
+  // Glazing U-value analysis (U 0.3 to U 0.1, increment 0.02)
+  const glazingUValueAnalysisData = [];
+  const baselineGlazingHeatLoss = (results.totalGlazingArea * 10) * inputs.heatingDegreeDays; // U-10 approximation
 
-  for (let r = 1; r <= 10; r += 0.5) {
-    const totalUAValue = (results.totalGlazingArea / r) +
+  for (let u = 0.3; u >= 0.1; u -= 0.02) {
+    const totalUAValue = (results.totalGlazingArea * u) +
                         (inputs.soffitArea / inputs.soffitRValue) +
                         (inputs.basementArea / inputs.basementRValue) +
                         (inputs.roofArea / inputs.roofRValue) +
@@ -156,20 +156,20 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                         (inputs.opaqueWallArea / inputs.opaqueWallRValue);
     
     const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
-    const energySaved = ((baselineGlazingHeatLoss - (results.totalGlazingArea / r) * inputs.heatingDegreeDays) / baselineGlazingHeatLoss * 100);
+    const energySaved = ((baselineGlazingHeatLoss - (results.totalGlazingArea * u) * inputs.heatingDegreeDays) / baselineGlazingHeatLoss * 100);
     
-    glazingRValueAnalysisData.push({
-      rValue: r,
+    glazingUValueAnalysisData.push({
+      uValue: parseFloat(u.toFixed(2)),
       heatLoss: envelopeHeatLoss,
       energySaved: energySaved
     });
   }
 
-  // Roof R-value analysis
+  // Roof R-value analysis (R-10 to R-80, increment 10)
   const roofRValueAnalysisData = [];
   const baselineRoofHeatLoss = (inputs.roofArea / 0.1) * inputs.heatingDegreeDays; // R-0 approximation
 
-  for (let r = 10; r <= 50; r += 2.5) {
+  for (let r = 10; r <= 80; r += 10) {
     const totalUAValue = (results.totalGlazingArea / inputs.glazingRValue) +
                         (inputs.soffitArea / inputs.soffitRValue) +
                         (inputs.basementArea / inputs.basementRValue) +
@@ -188,10 +188,10 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
   }
 
   const chartConfig = {
-    value: { label: "Value", color: "hsl(var(--chart-1))" },
-    area: { label: "Area", color: "hsl(var(--chart-2))" },
-    heatLoss: { label: "Heat Loss", color: "#156082" },
-    energySaved: { label: "Energy Saved %", color: "#e97132" },
+    value: { label: "Value", color: "#000000" },
+    area: { label: "Area", color: "#333333" },
+    heatLoss: { label: "Heat Loss", color: "#000000" },
+    energySaved: { label: "Energy Saved %", color: "#666666" },
   };
 
   return (
@@ -237,15 +237,9 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                     return null;
                   }}
                 />
-                <Bar 
-                  dataKey="value"
-                  fill={(entry: any) => {
-                    // This approach won't work, need to use Cell components instead
-                    return '#3b82f6';
-                  }}
-                >
+                <Bar dataKey="value">
                   {heatFlowData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.type === 'gain' ? '#ef4444' : '#3b82f6'} />
+                    <Cell key={`cell-${index}`} fill={entry.type === 'gain' ? '#ffffff' : '#000000'} stroke="#000000" />
                   ))}
                 </Bar>
               </BarChart>
@@ -295,7 +289,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                     return null;
                   }}
                 />
-                <Bar dataKey="value" fill="#3b82f6" />
+                <Bar dataKey="value" fill="#000000" />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
@@ -387,7 +381,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                     return null;
                   }}
                 />
-                <Bar dataKey="area" fill="var(--color-area)" />
+                <Bar dataKey="area" fill="#000000" />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
@@ -432,9 +426,9 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                           <p className="font-medium">R-Value: {label} ft²·°F·h/Btu</p>
                           {payload.map((entry, index) => (
                             <p key={index} className="text-sm" style={{color: entry.color}}>
-                              {entry.name}: {entry.name.includes('%') ? 
-                                `${entry.value?.toFixed(1)}%` : 
-                                `${entry.value?.toLocaleString()} Btu/year`}
+                              {entry.dataKey === 'energySaved' ? 
+                                `Energy Saved: ${Number(entry.value).toFixed(1)}%` : 
+                                `Heat Loss: ${Number(entry.value).toLocaleString()} Btu/year`}
                             </p>
                           ))}
                         </div>
@@ -446,16 +440,16 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                 <Bar 
                   yAxisId="left"
                   dataKey="heatLoss" 
-                  fill="#156082"
+                  fill="#000000"
                   name="Heat Loss"
                 />
                 <Line 
                   yAxisId="right"
                   type="monotone" 
                   dataKey="energySaved" 
-                  stroke="#e97132" 
-                  strokeWidth={3}
-                  dot={{ fill: '#e97132', strokeWidth: 2, r: 6 }}
+                  stroke="#666666" 
+                  strokeWidth={2}
+                  dot={{ fill: '#666666', strokeWidth: 1, r: 3 }}
                   name="Energy Saved %"
                 />
               </ComposedChart>
@@ -466,11 +460,11 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Glazing R-Value Analysis</CardTitle>
+          <CardTitle>Glazing U-Value Analysis</CardTitle>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => downloadChart('glazing-rvalue-chart', 'glazing-rvalue-analysis')}
+            onClick={() => downloadChart('glazing-uvalue-chart', 'glazing-uvalue-analysis')}
           >
             <Download className="h-4 w-4" />
           </Button>
@@ -478,10 +472,10 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={glazingRValueAnalysisData} id="glazing-rvalue-chart">
+              <ComposedChart data={glazingUValueAnalysisData} id="glazing-uvalue-chart">
                 <XAxis 
-                  dataKey="rValue" 
-                  label={{ value: 'Glazing R-Value (ft²·°F·h/Btu)', position: 'insideBottom', offset: -5 }}
+                  dataKey="uValue" 
+                  label={{ value: 'Glazing U-Value (Btu/ft²·°F·h)', position: 'insideBottom', offset: -5 }}
                 />
                 <YAxis 
                   yAxisId="left"
@@ -499,12 +493,12 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                     if (active && payload && payload.length > 0) {
                       return (
                         <div className="bg-white p-2 border rounded shadow">
-                          <p className="font-medium">R-Value: {label} ft²·°F·h/Btu</p>
+                          <p className="font-medium">U-Value: {label} Btu/ft²·°F·h</p>
                           {payload.map((entry, index) => (
                             <p key={index} className="text-sm" style={{color: entry.color}}>
-                              {entry.name}: {entry.name.includes('%') ? 
-                                `${entry.value?.toFixed(1)}%` : 
-                                `${entry.value?.toLocaleString()} Btu/year`}
+                              {entry.dataKey === 'energySaved' ? 
+                                `Energy Saved: ${Number(entry.value).toFixed(1)}%` : 
+                                `Heat Loss: ${Number(entry.value).toLocaleString()} Btu/year`}
                             </p>
                           ))}
                         </div>
@@ -516,16 +510,17 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                 <Bar 
                   yAxisId="left"
                   dataKey="heatLoss" 
-                  fill="#156082"
+                  fill="#000000"
                   name="Heat Loss"
+                  barSize={10}
                 />
                 <Line 
                   yAxisId="right"
                   type="monotone" 
                   dataKey="energySaved" 
-                  stroke="#e97132" 
-                  strokeWidth={3}
-                  dot={{ fill: '#e97132', strokeWidth: 2, r: 6 }}
+                  stroke="#666666" 
+                  strokeWidth={2}
+                  dot={{ fill: '#666666', strokeWidth: 1, r: 2 }}
                   name="Energy Saved %"
                 />
               </ComposedChart>
@@ -547,7 +542,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100">
               <ComposedChart data={roofRValueAnalysisData} id="roof-rvalue-chart">
                 <XAxis 
                   dataKey="rValue" 
@@ -572,9 +567,9 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                           <p className="font-medium">R-Value: {label} ft²·°F·h/Btu</p>
                           {payload.map((entry, index) => (
                             <p key={index} className="text-sm" style={{color: entry.color}}>
-                              {entry.name}: {entry.name.includes('%') ? 
-                                `${entry.value?.toFixed(1)}%` : 
-                                `${entry.value?.toLocaleString()} Btu/year`}
+                              {entry.dataKey === 'energySaved' ? 
+                                `Energy Saved: ${Number(entry.value).toFixed(1)}%` : 
+                                `Heat Loss: ${Number(entry.value).toLocaleString()} Btu/year`}
                             </p>
                           ))}
                         </div>
@@ -586,16 +581,16 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                 <Bar 
                   yAxisId="left"
                   dataKey="heatLoss" 
-                  fill="#156082"
+                  fill="#000000"
                   name="Heat Loss"
                 />
                 <Line 
                   yAxisId="right"
                   type="monotone" 
                   dataKey="energySaved" 
-                  stroke="#e97132" 
-                  strokeWidth={3}
-                  dot={{ fill: '#e97132', strokeWidth: 2, r: 6 }}
+                  stroke="#666666" 
+                  strokeWidth={2}
+                  dot={{ fill: '#666666', strokeWidth: 1, r: 3 }}
                   name="Energy Saved %"
                 />
               </ComposedChart>
