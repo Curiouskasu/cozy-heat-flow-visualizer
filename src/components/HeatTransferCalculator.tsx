@@ -11,6 +11,9 @@ export interface CalculatorInputs {
   heatingDegreeDays: number;
   coolingDegreeDays: number;
   
+  // Current building load
+  currentEnergyLoad: number;
+  
   // Glazing areas
   northGlazingArea: number;
   southGlazingArea: number;
@@ -54,6 +57,7 @@ const HeatTransferCalculator = () => {
   const [inputs, setInputs] = useState<CalculatorInputs>({
     heatingDegreeDays: 3000,
     coolingDegreeDays: 1000,
+    currentEnergyLoad: 50000000,
     northGlazingArea: 50,
     southGlazingArea: 80,
     eastGlazingArea: 60,

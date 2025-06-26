@@ -53,6 +53,15 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
 
       <Card>
         <CardHeader>
+          <CardTitle>Current Building Load</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <InputField label="Current Energy Load (Qc)" field="currentEnergyLoad" unit="Btu/year" step="1000" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Glazing Areas</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
