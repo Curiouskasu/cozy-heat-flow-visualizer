@@ -45,45 +45,27 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
   };
 
-  // Heat flow data with proper color coding and units
-  const heatFlowData = [
+  // Heat gains and losses data
+  const heatGainLossData = [
     { 
-      name: 'Envelope Heat Loss', 
-      value: results.envelopeHeatLoss, 
+      name: 'Heat Gains', 
+      value: results.envelopeHeatGain + results.infiltrationHeatGain + results.solarHeatGain, 
+      type: 'gain',
+      unit: 'Btu/year'
+    },
+    { 
+      name: 'Heat Losses', 
+      value: results.envelopeHeatLoss + results.infiltrationHeatLoss, 
       type: 'loss',
-      unit: 'Btu/year'
-    },
-    { 
-      name: 'Infiltration Heat Loss', 
-      value: results.infiltrationHeatLoss, 
-      type: 'loss',
-      unit: 'Btu/year'
-    },
-    { 
-      name: 'Envelope Heat Gain', 
-      value: results.envelopeHeatGain, 
-      type: 'gain',
-      unit: 'Btu/year'
-    },
-    { 
-      name: 'Infiltration Heat Gain', 
-      value: results.infiltrationHeatGain, 
-      type: 'gain',
-      unit: 'Btu/year'
-    },
-    { 
-      name: 'Solar Heat Gain', 
-      value: results.solarHeatGain, 
-      type: 'gain',
       unit: 'Btu/year'
     },
   ];
 
   const glazingData = [
-    { name: 'North', area: inputs.northGlazingArea, color: '#000000' },
-    { name: 'South', area: inputs.southGlazingArea, color: '#333333' },
-    { name: 'East', area: inputs.eastGlazingArea, color: '#666666' },
-    { name: 'West', area: inputs.westGlazingArea, color: '#999999' },
+    { name: 'North', area: inputs.northGlazingArea, color: '#8884d8' },
+    { name: 'South', area: inputs.southGlazingArea, color: '#82ca9d' },
+    { name: 'East', area: inputs.eastGlazingArea, color: '#ffc658' },
+    { name: 'West', area: inputs.westGlazingArea, color: '#ff7300' },
   ];
 
   const envelopeComponentsData = [
@@ -117,14 +99,9 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
 
   // R-value analysis data for opaque walls (R-5 to R-40, increment 5)
   const rValueAnalysisData = [];
-  const baselineHeatLoss = (results.totalGlazingArea / inputs.glazingRValue) +
-                          (inputs.soffitArea / inputs.soffitRValue) +
-                          (inputs.basementArea / inputs.basementRValue) +
-                          (inputs.roofArea / inputs.roofRValue) +
-                          (inputs.floorArea / inputs.floorRValue) +
-                          (inputs.opaqueWallArea / 0.1); // R-0 approximation
-  const baselineEnvelopeHeatLoss = baselineHeatLoss * inputs.heatingDegreeDays;
+  let maxWallHeatLoss = 0;
 
+  // First pass to find the maximum heat loss
   for (let r = 5; r <= 40; r += 5) {
     const totalUAValue = (results.totalGlazingArea / inputs.glazingRValue) +
                         (inputs.soffitArea / inputs.soffitRValue) +
@@ -134,7 +111,20 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                         (inputs.opaqueWallArea / r);
     
     const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
-    const energySaved = ((baselineEnvelopeHeatLoss - envelopeHeatLoss) / baselineEnvelopeHeatLoss * 100);
+    maxWallHeatLoss = Math.max(maxWallHeatLoss, envelopeHeatLoss);
+  }
+
+  // Second pass to calculate energy saved compared to maximum
+  for (let r = 5; r <= 40; r += 5) {
+    const totalUAValue = (results.totalGlazingArea / inputs.glazingRValue) +
+                        (inputs.soffitArea / inputs.soffitRValue) +
+                        (inputs.basementArea / inputs.basementRValue) +
+                        (inputs.roofArea / inputs.roofRValue) +
+                        (inputs.floorArea / inputs.floorRValue) +
+                        (inputs.opaqueWallArea / r);
+    
+    const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
+    const energySaved = ((maxWallHeatLoss - envelopeHeatLoss) / maxWallHeatLoss * 100);
     
     rValueAnalysisData.push({
       rValue: r,
@@ -145,8 +135,9 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
 
   // Glazing U-value analysis (U 0.3 to U 0.1, increment 0.02)
   const glazingUValueAnalysisData = [];
-  const baselineGlazingHeatLoss = (results.totalGlazingArea * 10) * inputs.heatingDegreeDays; // U-10 approximation
+  let maxGlazingHeatLoss = 0;
 
+  // First pass to find the maximum heat loss
   for (let u = 0.3; u >= 0.1; u -= 0.02) {
     const totalUAValue = (results.totalGlazingArea * u) +
                         (inputs.soffitArea / inputs.soffitRValue) +
@@ -156,7 +147,20 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                         (inputs.opaqueWallArea / inputs.opaqueWallRValue);
     
     const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
-    const energySaved = ((baselineGlazingHeatLoss - (results.totalGlazingArea * u) * inputs.heatingDegreeDays) / baselineGlazingHeatLoss * 100);
+    maxGlazingHeatLoss = Math.max(maxGlazingHeatLoss, envelopeHeatLoss);
+  }
+
+  // Second pass to calculate energy saved compared to maximum
+  for (let u = 0.3; u >= 0.1; u -= 0.02) {
+    const totalUAValue = (results.totalGlazingArea * u) +
+                        (inputs.soffitArea / inputs.soffitRValue) +
+                        (inputs.basementArea / inputs.basementRValue) +
+                        (inputs.roofArea / inputs.roofRValue) +
+                        (inputs.floorArea / inputs.floorRValue) +
+                        (inputs.opaqueWallArea / inputs.opaqueWallRValue);
+    
+    const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
+    const energySaved = ((maxGlazingHeatLoss - envelopeHeatLoss) / maxGlazingHeatLoss * 100);
     
     glazingUValueAnalysisData.push({
       uValue: parseFloat(u.toFixed(2)),
@@ -167,8 +171,9 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
 
   // Roof R-value analysis (R-10 to R-80, increment 10)
   const roofRValueAnalysisData = [];
-  const baselineRoofHeatLoss = (inputs.roofArea / 0.1) * inputs.heatingDegreeDays; // R-0 approximation
+  let maxRoofHeatLoss = 0;
 
+  // First pass to find the maximum heat loss
   for (let r = 10; r <= 80; r += 10) {
     const totalUAValue = (results.totalGlazingArea / inputs.glazingRValue) +
                         (inputs.soffitArea / inputs.soffitRValue) +
@@ -178,7 +183,20 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                         (inputs.opaqueWallArea / inputs.opaqueWallRValue);
     
     const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
-    const energySaved = ((baselineRoofHeatLoss - (inputs.roofArea / r) * inputs.heatingDegreeDays) / baselineRoofHeatLoss * 100);
+    maxRoofHeatLoss = Math.max(maxRoofHeatLoss, envelopeHeatLoss);
+  }
+
+  // Second pass to calculate energy saved compared to maximum
+  for (let r = 10; r <= 80; r += 10) {
+    const totalUAValue = (results.totalGlazingArea / inputs.glazingRValue) +
+                        (inputs.soffitArea / inputs.soffitRValue) +
+                        (inputs.basementArea / inputs.basementRValue) +
+                        (inputs.roofArea / r) +
+                        (inputs.floorArea / inputs.floorRValue) +
+                        (inputs.opaqueWallArea / inputs.opaqueWallRValue);
+    
+    const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
+    const energySaved = ((maxRoofHeatLoss - envelopeHeatLoss) / maxRoofHeatLoss * 100);
     
     roofRValueAnalysisData.push({
       rValue: r,
@@ -188,21 +206,21 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
   }
 
   const chartConfig = {
-    value: { label: "Value", color: "#000000" },
-    area: { label: "Area", color: "#333333" },
-    heatLoss: { label: "Heat Loss", color: "#000000" },
-    energySaved: { label: "Energy Saved %", color: "#666666" },
+    value: { label: "Value", color: "#8884d8" },
+    area: { label: "Area", color: "#82ca9d" },
+    heatLoss: { label: "Heat Loss", color: "#156082" },
+    energySaved: { label: "Energy Saved %", color: "#e97132" },
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Heat Flow Summary (Btu/year)</CardTitle>
+          <CardTitle>Heat Gains vs Losses (Btu/year)</CardTitle>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => downloadChart('heat-flow-chart', 'heat-flow-summary')}
+            onClick={() => downloadChart('heat-gain-loss-chart', 'heat-gains-losses')}
           >
             <Download className="h-4 w-4" />
           </Button>
@@ -210,16 +228,13 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={heatFlowData} id="heat-flow-chart">
+              <BarChart data={heatGainLossData} id="heat-gain-loss-chart">
                 <XAxis 
                   dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={100} 
                   fontSize={12} 
                 />
                 <YAxis 
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
                 />
                 <ChartTooltip 
                   content={({ active, payload, label }) => {
@@ -238,8 +253,8 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                   }}
                 />
                 <Bar dataKey="value">
-                  {heatFlowData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.type === 'gain' ? '#ffffff' : '#000000'} stroke="#000000" />
+                  {heatGainLossData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.type === 'gain' ? '#82ca9d' : '#8884d8'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -289,7 +304,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                     return null;
                   }}
                 />
-                <Bar dataKey="value" fill="#000000" />
+                <Bar dataKey="value" fill="#8884d8" />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
@@ -381,7 +396,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                     return null;
                   }}
                 />
-                <Bar dataKey="area" fill="#000000" />
+                <Bar dataKey="area" fill="#82ca9d" />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
@@ -440,16 +455,16 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                 <Bar 
                   yAxisId="left"
                   dataKey="heatLoss" 
-                  fill="#000000"
+                  fill="#156082"
                   name="Heat Loss"
                 />
                 <Line 
                   yAxisId="right"
                   type="monotone" 
                   dataKey="energySaved" 
-                  stroke="#666666" 
+                  stroke="#e97132" 
                   strokeWidth={2}
-                  dot={{ fill: '#666666', strokeWidth: 1, r: 3 }}
+                  dot={{ fill: '#e97132', strokeWidth: 1, r: 3 }}
                   name="Energy Saved %"
                 />
               </ComposedChart>
@@ -510,7 +525,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                 <Bar 
                   yAxisId="left"
                   dataKey="heatLoss" 
-                  fill="#000000"
+                  fill="#156082"
                   name="Heat Loss"
                   barSize={10}
                 />
@@ -518,9 +533,9 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                   yAxisId="right"
                   type="monotone" 
                   dataKey="energySaved" 
-                  stroke="#666666" 
+                  stroke="#e97132" 
                   strokeWidth={2}
-                  dot={{ fill: '#666666', strokeWidth: 1, r: 2 }}
+                  dot={{ fill: '#e97132', strokeWidth: 1, r: 2 }}
                   name="Energy Saved %"
                 />
               </ComposedChart>
@@ -542,7 +557,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100">
+            <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={roofRValueAnalysisData} id="roof-rvalue-chart">
                 <XAxis 
                   dataKey="rValue" 
@@ -581,16 +596,16 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                 <Bar 
                   yAxisId="left"
                   dataKey="heatLoss" 
-                  fill="#000000"
+                  fill="#156082"
                   name="Heat Loss"
                 />
                 <Line 
                   yAxisId="right"
                   type="monotone" 
                   dataKey="energySaved" 
-                  stroke="#666666" 
+                  stroke="#e97132" 
                   strokeWidth={2}
-                  dot={{ fill: '#666666', strokeWidth: 1, r: 3 }}
+                  dot={{ fill: '#e97132', strokeWidth: 1, r: 3 }}
                   name="Energy Saved %"
                 />
               </ComposedChart>
