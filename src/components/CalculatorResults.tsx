@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { FileText } from 'lucide-react';
 import { CalculatorInputs, CalculatorResults } from "./HeatTransferCalculator";
 
 interface Props {
@@ -41,11 +43,81 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
   
   const percentageDifference = ((totalCalculatedEnergy - inputs.currentEnergyLoad) / inputs.currentEnergyLoad * 100);
 
+  // Download CSV function
+  const downloadResultsCSV = () => {
+    const csvData = [
+      // Header
+      ['Category', 'Parameter', 'Value', 'Unit'],
+      
+      // Inputs
+      ['Inputs', 'Current Energy Load (Qc)', inputs.currentEnergyLoad, 'Btu/year'],
+      ['Inputs', 'North Glazing Area', inputs.northGlazingArea, 'ft²'],
+      ['Inputs', 'South Glazing Area', inputs.southGlazingArea, 'ft²'],
+      ['Inputs', 'East Glazing Area', inputs.eastGlazingArea, 'ft²'],
+      ['Inputs', 'West Glazing Area', inputs.westGlazingArea, 'ft²'],
+      ['Inputs', 'Glazing R-Value', inputs.glazingRValue, 'ft²·°F·h/Btu'],
+      ['Inputs', 'Soffit Area', inputs.soffitArea, 'ft²'],
+      ['Inputs', 'Soffit R-Value', inputs.soffitRValue, 'ft²·°F·h/Btu'],
+      ['Inputs', 'Basement Area', inputs.basementArea, 'ft²'],
+      ['Inputs', 'Basement R-Value', inputs.basementRValue, 'ft²·°F·h/Btu'],
+      ['Inputs', 'Roof Area', inputs.roofArea, 'ft²'],
+      ['Inputs', 'Roof R-Value', inputs.roofRValue, 'ft²·°F·h/Btu'],
+      ['Inputs', 'Floor Area', inputs.floorArea, 'ft²'],
+      ['Inputs', 'Floor R-Value', inputs.floorRValue, 'ft²·°F·h/Btu'],
+      ['Inputs', 'Opaque Wall Area', inputs.opaqueWallArea, 'ft²'],
+      ['Inputs', 'Opaque Wall R-Value', inputs.opaqueWallRValue, 'ft²·°F·h/Btu'],
+      ['Inputs', 'SHGC', inputs.shgc, 'dimensionless'],
+      ['Inputs', 'Heating Degree Days', inputs.heatingDegreeDays, '°F·days'],
+      ['Inputs', 'Cooling Degree Days', inputs.coolingDegreeDays, '°F·days'],
+      ['Inputs', 'Infiltration Load per Degree Day', inputs.infiltrationLoadPerDegreeDay, 'Btu/°F·day'],
+      ['Inputs', 'North Solar Irradiance', inputs.northSolarIrradiance, 'Btu/ft²·year'],
+      ['Inputs', 'South Solar Irradiance', inputs.southSolarIrradiance, 'Btu/ft²·year'],
+      ['Inputs', 'East Solar Irradiance', inputs.eastSolarIrradiance, 'Btu/ft²·year'],
+      ['Inputs', 'West Solar Irradiance', inputs.westSolarIrradiance, 'Btu/ft²·year'],
+      
+      // Calculated Results
+      ['Results', 'Total Glazing Area', results.totalGlazingArea, 'ft²'],
+      ['Results', 'Envelope Heat Loss (Qel)', results.envelopeHeatLoss, 'Btu/year'],
+      ['Results', 'Envelope Heat Gain (Qeg)', results.envelopeHeatGain, 'Btu/year'],
+      ['Results', 'Infiltration Heat Loss (Qil)', results.infiltrationHeatLoss, 'Btu/year'],
+      ['Results', 'Infiltration Heat Gain (Qig)', results.infiltrationHeatGain, 'Btu/year'],
+      ['Results', 'Solar Heat Gain (Qshg)', results.solarHeatGain, 'Btu/year'],
+      ['Results', 'Total Calculated Energy', totalCalculatedEnergy, 'Btu/year'],
+      ['Results', 'Energy Difference vs Current', percentageDifference.toFixed(1), '%'],
+      
+      // Formulas
+      ['Formulas', 'Envelope Heat Loss', 'Qel = (Ag/Rg + As/Rs + Ab/Rb + Ar/Rr + Af/Rf + Ao/Ro) × Th', ''],
+      ['Formulas', 'Envelope Heat Gain', 'Qeg = (Ag/Rg + As/Rs + Ab/Rb + Ar/Rr + Af/Rf + Ao/Ro) × Tc', ''],
+      ['Formulas', 'Infiltration Heat Loss', 'Qil = Lg × Th', ''],
+      ['Formulas', 'Infiltration Heat Gain', 'Qig = Lg × Tc', ''],
+      ['Formulas', 'Solar Heat Gain', 'Qshg = (Agn×Edn + Ags×Eds + Age×Ede + Agw×Edw) × SHGC', ''],
+    ];
+
+    const csvContent = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'heat-transfer-calculation-results.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Energy Comparison</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Energy Comparison & Results Download</CardTitle>
+          <Button
+            variant="outline"
+            onClick={downloadResultsCSV}
+            className="flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Download Complete Results (CSV)
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

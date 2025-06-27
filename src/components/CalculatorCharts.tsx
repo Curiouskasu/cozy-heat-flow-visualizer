@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ComposedChart } from 'recharts';
-import { Download } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { CalculatorInputs, CalculatorResults } from "./HeatTransferCalculator";
 
 interface Props {
@@ -45,36 +44,75 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
   };
 
-  // Heat gains and losses data
-  const heatGainLossData = [
+  // Download CSV function
+  const downloadCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(header => row[header]).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Heat gains and losses data - separated into components
+  const heatComponentsData = [
     { 
-      name: 'Heat Gains', 
-      value: results.envelopeHeatGain + results.infiltrationHeatGain + results.solarHeatGain, 
+      name: 'Envelope Heat Gain', 
+      value: results.envelopeHeatGain, 
       type: 'gain',
       unit: 'Btu/year'
     },
     { 
-      name: 'Heat Losses', 
-      value: results.envelopeHeatLoss + results.infiltrationHeatLoss, 
+      name: 'Infiltration Heat Gain', 
+      value: results.infiltrationHeatGain, 
+      type: 'gain',
+      unit: 'Btu/year'
+    },
+    { 
+      name: 'Solar Heat Gain', 
+      value: results.solarHeatGain, 
+      type: 'gain',
+      unit: 'Btu/year'
+    },
+    { 
+      name: 'Envelope Heat Loss', 
+      value: results.envelopeHeatLoss, 
+      type: 'loss',
+      unit: 'Btu/year'
+    },
+    { 
+      name: 'Infiltration Heat Loss', 
+      value: results.infiltrationHeatLoss, 
       type: 'loss',
       unit: 'Btu/year'
     },
   ];
 
   const glazingData = [
-    { name: 'North', area: inputs.northGlazingArea, color: '#8884d8' },
-    { name: 'South', area: inputs.southGlazingArea, color: '#82ca9d' },
-    { name: 'East', area: inputs.eastGlazingArea, color: '#ffc658' },
-    { name: 'West', area: inputs.westGlazingArea, color: '#ff7300' },
+    { name: 'North', area: inputs.northGlazingArea, color: '#000000' },
+    { name: 'South', area: inputs.southGlazingArea, color: '#333333' },
+    { name: 'East', area: inputs.eastGlazingArea, color: '#666666' },
+    { name: 'West', area: inputs.westGlazingArea, color: '#999999' },
   ];
 
   const envelopeComponentsData = [
-    { name: 'Glazing', area: results.totalGlazingArea, rValue: inputs.glazingRValue },
-    { name: 'Soffit', area: inputs.soffitArea, rValue: inputs.soffitRValue },
-    { name: 'Basement', area: inputs.basementArea, rValue: inputs.basementRValue },
-    { name: 'Roof', area: inputs.roofArea, rValue: inputs.roofRValue },
-    { name: 'Floor', area: inputs.floorArea, rValue: inputs.floorRValue },
-    { name: 'Opaque Walls', area: inputs.opaqueWallArea, rValue: inputs.opaqueWallRValue },
+    { name: 'Glazing', area: results.totalGlazingArea, rValue: inputs.glazingRValue, color: '#000000' },
+    { name: 'Soffit', area: inputs.soffitArea, rValue: inputs.soffitRValue, color: '#1a1a1a' },
+    { name: 'Basement', area: inputs.basementArea, rValue: inputs.basementRValue, color: '#333333' },
+    { name: 'Roof', area: inputs.roofArea, rValue: inputs.roofRValue, color: '#4d4d4d' },
+    { name: 'Floor', area: inputs.floorArea, rValue: inputs.floorRValue, color: '#666666' },
+    { name: 'Opaque Walls', area: inputs.opaqueWallArea, rValue: inputs.opaqueWallRValue, color: '#808080' },
   ];
 
   // Total calculated energy vs current energy load
@@ -206,8 +244,8 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
   }
 
   const chartConfig = {
-    value: { label: "Value", color: "#8884d8" },
-    area: { label: "Area", color: "#82ca9d" },
+    value: { label: "Value", color: "#000000" },
+    area: { label: "Area", color: "#000000" },
     heatLoss: { label: "Heat Loss", color: "#156082" },
     energySaved: { label: "Energy Saved %", color: "#e97132" },
   };
@@ -216,22 +254,34 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Heat Gains vs Losses (Btu/year)</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadChart('heat-gain-loss-chart', 'heat-gains-losses')}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <CardTitle>Heat Gains and Losses Components (Btu/year)</CardTitle>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadChart('heat-components-chart', 'heat-components')}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCSV(heatComponentsData, 'heat-components-data')}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={heatGainLossData} id="heat-gain-loss-chart">
+              <BarChart data={heatComponentsData} id="heat-components-chart">
                 <XAxis 
                   dataKey="name" 
                   fontSize={12} 
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
                 />
                 <YAxis 
                   tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
@@ -253,8 +303,8 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                   }}
                 />
                 <Bar dataKey="value">
-                  {heatGainLossData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.type === 'gain' ? '#82ca9d' : '#8884d8'} />
+                  {heatComponentsData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.type === 'gain' ? '#666666' : '#000000'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -266,13 +316,22 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Energy Load Comparison (Btu/year)</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadChart('energy-comparison-chart', 'energy-comparison')}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadChart('energy-comparison-chart', 'energy-comparison')}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCSV(energyComparisonData, 'energy-comparison-data')}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
@@ -304,7 +363,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                     return null;
                   }}
                 />
-                <Bar dataKey="value" fill="#8884d8" />
+                <Bar dataKey="value" fill="#000000" />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
@@ -314,13 +373,22 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Glazing Area Distribution (ft²)</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadChart('glazing-chart', 'glazing-distribution')}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadChart('glazing-chart', 'glazing-distribution')}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCSV(glazingData, 'glazing-distribution-data')}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
@@ -361,33 +429,46 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Building Envelope Components (ft²)</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadChart('envelope-chart', 'envelope-components')}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadChart('envelope-chart', 'envelope-components')}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCSV(envelopeComponentsData, 'envelope-components-data')}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={envelopeComponentsData} id="envelope-chart">
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={100} 
-                  fontSize={12} 
-                />
-                <YAxis label={{ value: 'Area (ft²)', angle: -90, position: 'insideLeft' }} />
+              <PieChart id="envelope-chart">
+                <Pie
+                  data={envelopeComponentsData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  dataKey="area"
+                  label={({ name, area }) => `${name}: ${area} ft²`}
+                >
+                  {envelopeComponentsData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
                 <ChartTooltip 
-                  content={({ active, payload, label }) => {
+                  content={({ active, payload }) => {
                     if (active && payload && payload[0]) {
                       const data = payload[0].payload;
                       return (
                         <div className="bg-white p-2 border rounded shadow">
-                          <p className="font-medium">{label}</p>
+                          <p className="font-medium">{data.name}</p>
                           <p className="text-sm">Area: {data.area} ft²</p>
                           <p className="text-sm">R-Value: {data.rValue} ft²·°F·h/Btu</p>
                         </div>
@@ -396,8 +477,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                     return null;
                   }}
                 />
-                <Bar dataKey="area" fill="#82ca9d" />
-              </BarChart>
+              </PieChart>
             </ResponsiveContainer>
           </ChartContainer>
         </CardContent>
@@ -406,13 +486,22 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Opaque Wall R-Value Analysis</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadChart('wall-rvalue-chart', 'wall-rvalue-analysis')}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadChart('wall-rvalue-chart', 'wall-rvalue-analysis')}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCSV(rValueAnalysisData, 'wall-rvalue-analysis-data')}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
@@ -476,13 +565,22 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Glazing U-Value Analysis</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadChart('glazing-uvalue-chart', 'glazing-uvalue-analysis')}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadChart('glazing-uvalue-chart', 'glazing-uvalue-analysis')}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCSV(glazingUValueAnalysisData, 'glazing-uvalue-analysis-data')}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
@@ -547,13 +645,22 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Roof R-Value Analysis</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadChart('roof-rvalue-chart', 'roof-rvalue-analysis')}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadChart('roof-rvalue-chart', 'roof-rvalue-analysis')}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCSV(roofRValueAnalysisData, 'roof-rvalue-analysis-data')}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
