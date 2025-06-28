@@ -1,11 +1,11 @@
-
 import React, { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
-import { CalculatorInputs, GlazingElement, BuildingElement } from "./HeatTransferCalculator";
+import { CalculatorInputs, GlazingElement, BuildingElement, ClimateData } from "./HeatTransferCalculator";
+import EPWFileHandler from "./EPWFileHandler";
 
 interface Props {
   inputs: CalculatorInputs;
@@ -18,7 +18,8 @@ const InputField = ({
   unit = "",
   step = "0.1",
   value,
-  onChange
+  onChange,
+  disabled = false
 }: { 
   label: string; 
   field: string; 
@@ -26,6 +27,7 @@ const InputField = ({
   step?: string;
   value: number;
   onChange: (value: number) => void;
+  disabled?: boolean;
 }) => (
   <div className="space-y-2">
     <Label htmlFor={field}>{label} {unit && `(${unit})`}</Label>
@@ -36,13 +38,33 @@ const InputField = ({
       value={value}
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
       className="w-full"
+      disabled={disabled}
     />
   </div>
 );
 
 const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
-  const updateInput = useCallback((field: keyof CalculatorInputs, value: number) => {
-    setInputs(prev => ({ ...prev, [field]: value }));
+  const updateClimateData = useCallback((climateData: ClimateData) => {
+    setInputs(prev => ({ 
+      ...prev, 
+      climateData,
+      // Update legacy fields for backward compatibility
+      heatingDegreeDays: climateData.heatingDegreeDays,
+      coolingDegreeDays: climateData.coolingDegreeDays,
+      northSolarRadiation: climateData.northSolarRadiation,
+      southSolarRadiation: climateData.southSolarRadiation,
+      eastSolarRadiation: climateData.eastSolarRadiation,
+      westSolarRadiation: climateData.westSolarRadiation,
+    }));
+  }, [setInputs]);
+
+  const updateClimateField = useCallback((field: keyof ClimateData, value: number) => {
+    setInputs(prev => ({
+      ...prev,
+      climateData: { ...prev.climateData, [field]: value },
+      // Update legacy fields
+      [field]: value
+    }));
   }, [setInputs]);
 
   const addGlazingElement = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding') => {
@@ -56,13 +78,9 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
             id: Date.now().toString(),
             name: `Glazing ${prev[buildingType].glazingElements.length + 1}`,
             northArea: 0,
-            northSolarRadiation: 800,
             southArea: 0,
-            southSolarRadiation: 1200,
             eastArea: 0,
-            eastSolarRadiation: 1000,
             westArea: 0,
-            westSolarRadiation: 1000,
             perimeter: 0,
             rValue: 3.0,
             shgc: 0.4
@@ -176,25 +194,11 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
                 onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'northArea', value)}
               />
               <InputField
-                label="North Solar Radiation (Edn)"
-                field={`${buildingType}-${glazing.id}-northSolarRadiation`}
-                unit="Btu/ft²"
-                value={glazing.northSolarRadiation}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'northSolarRadiation', value)}
-              />
-              <InputField
                 label="South Area (Ags)"
                 field={`${buildingType}-${glazing.id}-southArea`}
                 unit="ft²"
                 value={glazing.southArea}
                 onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'southArea', value)}
-              />
-              <InputField
-                label="South Solar Radiation (Eds)"
-                field={`${buildingType}-${glazing.id}-southSolarRadiation`}
-                unit="Btu/ft²"
-                value={glazing.southSolarRadiation}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'southSolarRadiation', value)}
               />
               <InputField
                 label="East Area (Age)"
@@ -204,25 +208,11 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
                 onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'eastArea', value)}
               />
               <InputField
-                label="East Solar Radiation (Ede)"
-                field={`${buildingType}-${glazing.id}-eastSolarRadiation`}
-                unit="Btu/ft²"
-                value={glazing.eastSolarRadiation}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'eastSolarRadiation', value)}
-              />
-              <InputField
                 label="West Area (Agw)"
                 field={`${buildingType}-${glazing.id}-westArea`}
                 unit="ft²"
                 value={glazing.westArea}
                 onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'westArea', value)}
-              />
-              <InputField
-                label="West Solar Radiation (Edw)"
-                field={`${buildingType}-${glazing.id}-westSolarRadiation`}
-                unit="Btu/ft²"
-                value={glazing.westSolarRadiation}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'westSolarRadiation', value)}
               />
             </div>
             
@@ -319,40 +309,67 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
         <CardHeader>
           <CardTitle>Climate Data</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField 
-            label="Heating Degree Days (Th)" 
-            field="heatingDegreeDays" 
-            unit="°F-days" 
-            step="1"
-            value={inputs.heatingDegreeDays}
-            onChange={(value) => updateInput('heatingDegreeDays', value)}
+        <CardContent className="space-y-6">
+          <EPWFileHandler 
+            climateData={inputs.climateData}
+            onClimateDataChange={updateClimateData}
           />
-          <InputField 
-            label="Cooling Degree Days (Tc)" 
-            field="coolingDegreeDays" 
-            unit="°F-days" 
-            step="1"
-            value={inputs.coolingDegreeDays}
-            onChange={(value) => updateInput('coolingDegreeDays', value)}
-          />
-        </CardContent>
-      </Card>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InputField 
+              label="Heating Degree Days (Th)" 
+              field="heatingDegreeDays" 
+              unit="°F-days" 
+              step="1"
+              value={inputs.climateData.heatingDegreeDays}
+              onChange={(value) => updateClimateField('heatingDegreeDays', value)}
+              disabled={!inputs.climateData.isManualInput}
+            />
+            <InputField 
+              label="Cooling Degree Days (Tc)" 
+              field="coolingDegreeDays" 
+              unit="°F-days" 
+              step="1"
+              value={inputs.climateData.coolingDegreeDays}
+              onChange={(value) => updateClimateField('coolingDegreeDays', value)}
+              disabled={!inputs.climateData.isManualInput}
+            />
+          </div>
 
-      {/* Current Energy Load */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Building Energy Load</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <InputField 
-            label="Current Energy Load (Qc)" 
-            field="currentEnergyLoad" 
-            unit="Btu/year" 
-            step="1000"
-            value={inputs.currentEnergyLoad}
-            onChange={(value) => updateInput('currentEnergyLoad', value)}
-          />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <InputField 
+              label="North Solar Radiation (Edn)" 
+              field="northSolarRadiation" 
+              unit="Btu/ft²" 
+              value={inputs.climateData.northSolarRadiation}
+              onChange={(value) => updateClimateField('northSolarRadiation', value)}
+              disabled={!inputs.climateData.isManualInput}
+            />
+            <InputField 
+              label="South Solar Radiation (Eds)" 
+              field="southSolarRadiation" 
+              unit="Btu/ft²" 
+              value={inputs.climateData.southSolarRadiation}
+              onChange={(value) => updateClimateField('southSolarRadiation', value)}
+              disabled={!inputs.climateData.isManualInput}
+            />
+            <InputField 
+              label="East Solar Radiation (Ede)" 
+              field="eastSolarRadiation" 
+              unit="Btu/ft²" 
+              value={inputs.climateData.eastSolarRadiation}
+              onChange={(value) => updateClimateField('eastSolarRadiation', value)}
+              disabled={!inputs.climateData.isManualInput}
+            />
+            <InputField 
+              label="West Solar Radiation (Edw)" 
+              field="westSolarRadiation" 
+              unit="Btu/ft²" 
+              value={inputs.climateData.westSolarRadiation}
+              onChange={(value) => updateClimateField('westSolarRadiation', value)}
+              disabled={!inputs.climateData.isManualInput}
+            />
+          </div>
         </CardContent>
       </Card>
 

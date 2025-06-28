@@ -10,13 +10,9 @@ export interface GlazingElement {
   id: string;
   name: string;
   northArea: number;
-  northSolarRadiation: number;
   southArea: number;
-  southSolarRadiation: number;
   eastArea: number;
-  eastSolarRadiation: number;
   westArea: number;
-  westSolarRadiation: number;
   perimeter: number;
   rValue: number;
   shgc: number;
@@ -34,19 +30,31 @@ export interface BuildingData {
   buildingElements: BuildingElement[];
 }
 
-export interface CalculatorInputs {
-  // Climate data
+export interface ClimateData {
   heatingDegreeDays: number;
   coolingDegreeDays: number;
+  northSolarRadiation: number;
+  southSolarRadiation: number;
+  eastSolarRadiation: number;
+  westSolarRadiation: number;
+  isManualInput: boolean;
+  epwFileName?: string;
+}
+
+export interface CalculatorInputs {
+  // Climate data
+  climateData: ClimateData;
   
   // Current building data
-  currentEnergyLoad: number;
   currentBuilding: BuildingData;
   
   // Proposed building data
   proposedBuilding: BuildingData;
   
   // Legacy fields for backward compatibility
+  heatingDegreeDays: number;
+  coolingDegreeDays: number;
+  currentEnergyLoad: number;
   northGlazingArea: number;
   southGlazingArea: number;
   eastGlazingArea: number;
@@ -83,21 +91,23 @@ export interface CalculatorResults {
 
 const HeatTransferCalculator = () => {
   const [inputs, setInputs] = useState<CalculatorInputs>({
-    heatingDegreeDays: 3000,
-    coolingDegreeDays: 1000,
-    currentEnergyLoad: 50000000,
+    climateData: {
+      heatingDegreeDays: 3000,
+      coolingDegreeDays: 1000,
+      northSolarRadiation: 800,
+      southSolarRadiation: 1200,
+      eastSolarRadiation: 1000,
+      westSolarRadiation: 1000,
+      isManualInput: true,
+    },
     currentBuilding: {
       glazingElements: [{
         id: '1',
         name: 'Main Glazing',
         northArea: 50,
-        northSolarRadiation: 800,
         southArea: 80,
-        southSolarRadiation: 1200,
         eastArea: 60,
-        eastSolarRadiation: 1000,
         westArea: 60,
-        westSolarRadiation: 1000,
         perimeter: 200,
         rValue: 3.0,
         shgc: 0.4
@@ -115,13 +125,9 @@ const HeatTransferCalculator = () => {
         id: '1',
         name: 'Improved Glazing',
         northArea: 50,
-        northSolarRadiation: 800,
         southArea: 80,
-        southSolarRadiation: 1200,
         eastArea: 60,
-        eastSolarRadiation: 1000,
         westArea: 60,
-        westSolarRadiation: 1000,
         perimeter: 200,
         rValue: 5.0,
         shgc: 0.3
@@ -135,6 +141,9 @@ const HeatTransferCalculator = () => {
       ]
     },
     // Legacy fields
+    heatingDegreeDays: 3000,
+    coolingDegreeDays: 1000,
+    currentEnergyLoad: 50000000,
     northGlazingArea: 50,
     southGlazingArea: 80,
     eastGlazingArea: 60,
@@ -158,7 +167,7 @@ const HeatTransferCalculator = () => {
     opaqueWallRValue: 12,
   });
 
-  const calculateBuildingEnergy = (building: BuildingData) => {
+  const calculateBuildingEnergy = (building: BuildingData, climateData: ClimateData) => {
     // Calculate total UA value for building elements
     const buildingUAValue = building.buildingElements.reduce((sum, element) => 
       sum + (element.area / element.rValue), 0);
@@ -172,21 +181,21 @@ const HeatTransferCalculator = () => {
     const totalUAValue = buildingUAValue + glazingUAValue;
     
     // Calculate envelope heat transfer
-    const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
-    const envelopeHeatGain = totalUAValue * inputs.coolingDegreeDays;
+    const envelopeHeatLoss = totalUAValue * climateData.heatingDegreeDays;
+    const envelopeHeatGain = totalUAValue * climateData.coolingDegreeDays;
     
     // Calculate infiltration
     const totalPerimeter = building.glazingElements.reduce((sum, glazing) => sum + glazing.perimeter, 0);
-    const infiltrationHeatLoss = totalPerimeter * inputs.heatingDegreeDays;
-    const infiltrationHeatGain = totalPerimeter * inputs.coolingDegreeDays;
+    const infiltrationHeatLoss = totalPerimeter * climateData.heatingDegreeDays;
+    const infiltrationHeatGain = totalPerimeter * climateData.coolingDegreeDays;
     
     // Calculate solar heat gain
     const solarHeatGain = building.glazingElements.reduce((sum, glazing) => {
       return sum + (
-        glazing.northArea * glazing.northSolarRadiation +
-        glazing.southArea * glazing.southSolarRadiation +
-        glazing.eastArea * glazing.eastSolarRadiation +
-        glazing.westArea * glazing.westSolarRadiation
+        glazing.northArea * climateData.northSolarRadiation +
+        glazing.southArea * climateData.southSolarRadiation +
+        glazing.eastArea * climateData.eastSolarRadiation +
+        glazing.westArea * climateData.westSolarRadiation
       ) * glazing.shgc;
     }, 0);
     
@@ -217,8 +226,8 @@ const HeatTransferCalculator = () => {
                           inputs.westGlazingArea * inputs.westSolarRadiation) * inputs.solarHeatGainCoeff;
     
     // New building calculations
-    const currentBuildingEnergy = calculateBuildingEnergy(inputs.currentBuilding);
-    const proposedBuildingEnergy = calculateBuildingEnergy(inputs.proposedBuilding);
+    const currentBuildingEnergy = calculateBuildingEnergy(inputs.currentBuilding, inputs.climateData);
+    const proposedBuildingEnergy = calculateBuildingEnergy(inputs.proposedBuilding, inputs.climateData);
     
     return {
       totalGlazingArea,
