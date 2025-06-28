@@ -66,14 +66,14 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
       ['Inputs', 'Floor R-Value', inputs.floorRValue, 'ft²·°F·h/Btu'],
       ['Inputs', 'Opaque Wall Area', inputs.opaqueWallArea, 'ft²'],
       ['Inputs', 'Opaque Wall R-Value', inputs.opaqueWallRValue, 'ft²·°F·h/Btu'],
-      ['Inputs', 'SHGC', inputs.shgc, 'dimensionless'],
+      ['Inputs', 'Solar Heat Gain Coefficient', inputs.solarHeatGainCoeff, 'dimensionless'],
       ['Inputs', 'Heating Degree Days', inputs.heatingDegreeDays, '°F·days'],
       ['Inputs', 'Cooling Degree Days', inputs.coolingDegreeDays, '°F·days'],
-      ['Inputs', 'Infiltration Load per Degree Day', inputs.infiltrationLoadPerDegreeDay, 'Btu/°F·day'],
-      ['Inputs', 'North Solar Irradiance', inputs.northSolarIrradiance, 'Btu/ft²·year'],
-      ['Inputs', 'South Solar Irradiance', inputs.southSolarIrradiance, 'Btu/ft²·year'],
-      ['Inputs', 'East Solar Irradiance', inputs.eastSolarIrradiance, 'Btu/ft²·year'],
-      ['Inputs', 'West Solar Irradiance', inputs.westSolarIrradiance, 'Btu/ft²·year'],
+      ['Inputs', 'Glazing Perimeter', inputs.glazingPerimeter, 'ft'],
+      ['Inputs', 'North Solar Radiation', inputs.northSolarRadiation, 'Btu/ft²·year'],
+      ['Inputs', 'South Solar Radiation', inputs.southSolarRadiation, 'Btu/ft²·year'],
+      ['Inputs', 'East Solar Radiation', inputs.eastSolarRadiation, 'Btu/ft²·year'],
+      ['Inputs', 'West Solar Radiation', inputs.westSolarRadiation, 'Btu/ft²·year'],
       
       // Calculated Results
       ['Results', 'Total Glazing Area', results.totalGlazingArea, 'ft²'],
@@ -120,7 +120,7 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">
                 {inputs.currentEnergyLoad.toLocaleString()}
@@ -135,13 +135,12 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
               <div className="text-sm text-muted-foreground">Calculated Energy Load</div>
               <div className="text-xs">Btu/year</div>
             </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${percentageDifference >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {percentageDifference >= 0 ? '+' : ''}{percentageDifference.toFixed(1)}%
-              </div>
-              <div className="text-sm text-muted-foreground">Energy Difference</div>
-              <div className="text-xs">{percentageDifference >= 0 ? 'Increase' : 'Decrease'} from Current</div>
+          </div>
+          <div className="text-center mt-4">
+            <div className={`text-3xl font-bold ${percentageDifference >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {percentageDifference >= 0 ? '+' : ''}{percentageDifference.toFixed(1)}%
             </div>
+            <div className="text-sm text-muted-foreground">Energy Difference from Current</div>
           </div>
         </CardContent>
       </Card>
