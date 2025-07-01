@@ -1,10 +1,10 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CalculatorInputs from "./CalculatorInputs";
 import CalculatorResults from "./CalculatorResults";
 import CalculatorCharts from "./CalculatorCharts";
+import CSVImporter from "./CSVImporter";
 
 export interface GlazingElement {
   id: string;
@@ -241,8 +241,14 @@ const HeatTransferCalculator = () => {
     };
   }, [inputs]);
 
+  const handleCSVImport = (importedData: CalculatorInputs) => {
+    setInputs(importedData);
+  };
+
   return (
     <div className="space-y-6">
+      <CSVImporter onDataImported={handleCSVImport} />
+      
       <Tabs defaultValue="inputs" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="inputs">Inputs</TabsTrigger>
