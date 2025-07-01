@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Copy, ArrowRight } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CalculatorInputs, GlazingElement, BuildingElement, ClimateData } from "./HeatTransferCalculator";
 import EPWFileHandler from "./EPWFileHandler";
+import DragDropList from "./DragDropList";
 
 interface Props {
   inputs: CalculatorInputs;
@@ -68,6 +69,7 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
     }));
   }, [setInputs]);
 
+  // Glazing element handlers
   const addGlazingElement = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding') => {
     setInputs(prev => ({
       ...prev,
@@ -83,10 +85,20 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
             eastArea: 0,
             westArea: 0,
             perimeter: 0,
-            uValue: 0.3, // Default U-value
+            uValue: 0.3,
             shgc: 0
           }
         ]
+      }
+    }));
+  }, [setInputs]);
+
+  const reorderGlazingElements = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding', newOrder: GlazingElement[]) => {
+    setInputs(prev => ({
+      ...prev,
+      [buildingType]: {
+        ...prev[buildingType],
+        glazingElements: newOrder
       }
     }));
   }, [setInputs]);
@@ -156,6 +168,7 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
     }));
   }, [setInputs]);
 
+  // Building element handlers
   const addBuildingElement = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding') => {
     setInputs(prev => ({
       ...prev,
@@ -170,6 +183,16 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
             rValue: 10
           }
         ]
+      }
+    }));
+  }, [setInputs]);
+
+  const reorderBuildingElements = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding', newOrder: BuildingElement[]) => {
+    setInputs(prev => ({
+      ...prev,
+      [buildingType]: {
+        ...prev[buildingType],
+        buildingElements: newOrder
       }
     }));
   }, [setInputs]);
@@ -239,6 +262,93 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
     }));
   }, [setInputs]);
 
+  const renderGlazingFields = (glazing: GlazingElement) => (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <InputField
+          label="North Area (Agn)"
+          field={`northArea-${glazing.id}`}
+          unit="ft²"
+          value={glazing.northArea}
+          onChange={(value) => updateGlazingElement('currentBuilding', glazing.id, 'northArea', value)}
+        />
+        <InputField
+          label="South Area (Ags)"
+          field={`southArea-${glazing.id}`}
+          unit="ft²"
+          value={glazing.southArea}
+          onChange={(value) => updateGlazingElement('currentBuilding', glazing.id, 'southArea', value)}
+        />
+        <InputField
+          label="East Area (Age)"
+          field={`eastArea-${glazing.id}`}
+          unit="ft²"
+          value={glazing.eastArea}
+          onChange={(value) => updateGlazingElement('currentBuilding', glazing.id, 'eastArea', value)}
+        />
+        <InputField
+          label="West Area (Agw)"
+          field={`westArea-${glazing.id}`}
+          unit="ft²"
+          value={glazing.westArea}
+          onChange={(value) => updateGlazingElement('currentBuilding', glazing.id, 'westArea', value)}
+        />
+      </div>
+      
+      <div className="grid grid-cols-3 gap-4">
+        <InputField
+          label="Total Perimeter (Lg)"
+          field={`perimeter-${glazing.id}`}
+          unit="ft"
+          value={glazing.perimeter}
+          onChange={(value) => updateGlazingElement('currentBuilding', glazing.id, 'perimeter', value)}
+        />
+        <InputField
+          label="U-Value (Ug)"
+          field={`uValue-${glazing.id}`}
+          unit="Btu/ft²·°F·h"
+          step="0.01"
+          value={glazing.uValue}
+          onChange={(value) => updateGlazingElement('currentBuilding', glazing.id, 'uValue', value)}
+        />
+        <InputField
+          label="SHGC"
+          field={`shgc-${glazing.id}`}
+          value={glazing.shgc}
+          onChange={(value) => updateGlazingElement('currentBuilding', glazing.id, 'shgc', value)}
+        />
+      </div>
+      
+      <div className="text-sm text-muted-foreground">
+        Total Glazing Area: {(glazing.northArea + glazing.southArea + glazing.eastArea + glazing.westArea).toFixed(1)} ft²
+        {glazing.uValue > 0 && (
+          <span className="ml-4">
+            R-Value Equivalent: {(1 / glazing.uValue).toFixed(2)} ft²·°F·h/Btu
+          </span>
+        )}
+      </div>
+    </>
+  );
+
+  const renderBuildingFields = (element: BuildingElement) => (
+    <div className="grid grid-cols-2 gap-4">
+      <InputField
+        label="Area (A)"
+        field={`area-${element.id}`}
+        unit="ft²"
+        value={element.area}
+        onChange={(value) => updateBuildingElement('currentBuilding', element.id, 'area', value)}
+      />
+      <InputField
+        label="R-Value (R)"
+        field={`rValue-${element.id}`}
+        unit="ft²·°F·h/Btu"
+        value={element.rValue}
+        onChange={(value) => updateBuildingElement('currentBuilding', element.id, 'rValue', value)}
+      />
+    </div>
+  );
+
   const GlazingSection = ({ buildingType, title }: { buildingType: 'currentBuilding' | 'proposedBuilding', title: string }) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -252,109 +362,17 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
           Add Glazing
         </Button>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {inputs[buildingType].glazingElements.map((glazing, index) => (
-          <div key={glazing.id} className="border rounded-lg p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <Input
-                value={glazing.name}
-                onChange={(e) => updateGlazingElement(buildingType, glazing.id, 'name', e.target.value)}
-                className="font-semibold"
-              />
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => duplicateGlazingElement(buildingType, glazing.id)}
-                  size="sm"
-                  variant="outline"
-                  title="Duplicate"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button
-                  onClick={() => copyGlazingElementToOtherSide(buildingType, glazing.id)}
-                  size="sm"
-                  variant="outline"
-                  title="Copy to other side"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-                {inputs[buildingType].glazingElements.length > 1 && (
-                  <Button
-                    onClick={() => removeGlazingElement(buildingType, glazing.id)}
-                    size="sm"
-                    variant="destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <InputField
-                label="North Area (Agn)"
-                field={`${buildingType}-${glazing.id}-northArea`}
-                unit="ft²"
-                value={glazing.northArea}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'northArea', value)}
-              />
-              <InputField
-                label="South Area (Ags)"
-                field={`${buildingType}-${glazing.id}-southArea`}
-                unit="ft²"
-                value={glazing.southArea}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'southArea', value)}
-              />
-              <InputField
-                label="East Area (Age)"
-                field={`${buildingType}-${glazing.id}-eastArea`}
-                unit="ft²"
-                value={glazing.eastArea}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'eastArea', value)}
-              />
-              <InputField
-                label="West Area (Agw)"
-                field={`${buildingType}-${glazing.id}-westArea`}
-                unit="ft²"
-                value={glazing.westArea}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'westArea', value)}
-              />
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4">
-              <InputField
-                label="Total Perimeter (Lg)"
-                field={`${buildingType}-${glazing.id}-perimeter`}
-                unit="ft"
-                value={glazing.perimeter}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'perimeter', value)}
-              />
-              <InputField
-                label="U-Value (Ug)"
-                field={`${buildingType}-${glazing.id}-uValue`}
-                unit="Btu/ft²·°F·h"
-                step="0.01"
-                value={glazing.uValue}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'uValue', value)}
-              />
-              <InputField
-                label="SHGC"
-                field={`${buildingType}-${glazing.id}-shgc`}
-                value={glazing.shgc}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'shgc', value)}
-              />
-            </div>
-            
-            <div className="text-sm text-muted-foreground">
-              Total Glazing Area: {(glazing.northArea + glazing.southArea + glazing.eastArea + glazing.westArea).toFixed(1)} ft²
-              {glazing.uValue > 0 && (
-                <span className="ml-4">
-                  R-Value Equivalent: {(1 / glazing.uValue).toFixed(2)} ft²·°F·h/Btu
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+      <CardContent>
+        <DragDropList
+          items={inputs[buildingType].glazingElements}
+          onReorder={(newOrder) => reorderGlazingElements(buildingType, newOrder)}
+          onDuplicate={(id) => duplicateGlazingElement(buildingType, id)}
+          onCopyToOtherSide={(id) => copyGlazingElementToOtherSide(buildingType, id)}
+          onRemove={(id) => removeGlazingElement(buildingType, id)}
+          onUpdate={(id, field, value) => updateGlazingElement(buildingType, id, field as keyof GlazingElement, value)}
+          renderFields={(glazing) => renderGlazingFields(glazing as GlazingElement)}
+          allowRemove={inputs[buildingType].glazingElements.length > 1}
+        />
       </CardContent>
     </Card>
   );
@@ -372,61 +390,17 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
           Add Element
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {inputs[buildingType].buildingElements.map((element) => (
-          <div key={element.id} className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <Input
-                value={element.name}
-                onChange={(e) => updateBuildingElement(buildingType, element.id, 'name', e.target.value)}
-                className="font-semibold max-w-xs"
-              />
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => duplicateBuildingElement(buildingType, element.id)}
-                  size="sm"
-                  variant="outline"
-                  title="Duplicate"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button
-                  onClick={() => copyBuildingElementToOtherSide(buildingType, element.id)}
-                  size="sm"
-                  variant="outline"
-                  title="Copy to other side"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-                {inputs[buildingType].buildingElements.length > 1 && (
-                  <Button
-                    onClick={() => removeBuildingElement(buildingType, element.id)}
-                    size="sm"
-                    variant="destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <InputField
-                label="Area (A)"
-                field={`${buildingType}-${element.id}-area`}
-                unit="ft²"
-                value={element.area}
-                onChange={(value) => updateBuildingElement(buildingType, element.id, 'area', value)}
-              />
-              <InputField
-                label="R-Value (R)"
-                field={`${buildingType}-${element.id}-rValue`}
-                unit="ft²·°F·h/Btu"
-                value={element.rValue}
-                onChange={(value) => updateBuildingElement(buildingType, element.id, 'rValue', value)}
-              />
-            </div>
-          </div>
-        ))}
+      <CardContent>
+        <DragDropList
+          items={inputs[buildingType].buildingElements}
+          onReorder={(newOrder) => reorderBuildingElements(buildingType, newOrder)}
+          onDuplicate={(id) => duplicateBuildingElement(buildingType, id)}
+          onCopyToOtherSide={(id) => copyBuildingElementToOtherSide(buildingType, id)}
+          onRemove={(id) => removeBuildingElement(buildingType, id)}
+          onUpdate={(id, field, value) => updateBuildingElement(buildingType, id, field as keyof BuildingElement, value)}
+          renderFields={(element) => renderBuildingFields(element as BuildingElement)}
+          allowRemove={inputs[buildingType].buildingElements.length > 1}
+        />
       </CardContent>
     </Card>
   );
