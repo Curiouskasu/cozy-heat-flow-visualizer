@@ -19,92 +19,100 @@ const CSVImporter = ({ onDataImported }: Props) => {
       const lines = csvContent.split('\n').filter(line => line.trim());
       const data: any = {};
       
-      // Parse key-value pairs from CSV
+      // Parse CSV data into key-value pairs
       lines.forEach(line => {
-        const [key, value] = line.split(',').map(item => item.trim().replace(/"/g, ''));
-        if (key && value !== undefined) {
-          // Convert numeric values
-          const numValue = parseFloat(value);
-          data[key] = isNaN(numValue) ? value : numValue;
+        const parts = line.split(',');
+        if (parts.length >= 3) {
+          const category = parts[0].replace(/"/g, '').trim();
+          const parameter = parts[1].replace(/"/g, '').trim();
+          const value = parts[2].replace(/"/g, '').trim();
+          
+          if (parameter && value !== '') {
+            const key = `${category}_${parameter}`;
+            const numValue = parseFloat(value);
+            data[key] = isNaN(numValue) ? value : numValue;
+          }
         }
       });
+
+      console.log('Parsed CSV data:', data);
 
       // Map CSV data to CalculatorInputs structure
       const calculatorInputs: CalculatorInputs = {
         climateData: {
-          heatingDegreeDays: data['Heating Degree Days'] || 0,
-          coolingDegreeDays: data['Cooling Degree Days'] || 0,
-          northSolarRadiation: data['North Solar Radiation'] || 0,
-          southSolarRadiation: data['South Solar Radiation'] || 0,
-          eastSolarRadiation: data['East Solar Radiation'] || 0,
-          westSolarRadiation: data['West Solar Radiation'] || 0,
+          heatingDegreeDays: data['Climate Data_Heating Degree Days (Th)'] || 0,
+          coolingDegreeDays: data['Climate Data_Cooling Degree Days (Tc)'] || 0,
+          northSolarRadiation: data['Climate Data_North Solar Radiation (Edn)'] || 0,
+          southSolarRadiation: data['Climate Data_South Solar Radiation (Eds)'] || 0,
+          eastSolarRadiation: data['Climate Data_East Solar Radiation (Ede)'] || 0,
+          westSolarRadiation: data['Climate Data_West Solar Radiation (Edw)'] || 0,
           isManualInput: true,
         },
         currentBuilding: {
           glazingElements: [{
             id: '1',
             name: 'Current Glazing',
-            northArea: data['Current North Glazing Area'] || 0,
-            southArea: data['Current South Glazing Area'] || 0,
-            eastArea: data['Current East Glazing Area'] || 0,
-            westArea: data['Current West Glazing Area'] || 0,
-            perimeter: data['Current Glazing Perimeter'] || 0,
-            uValue: data['Current Glazing U-Value'] || 0.3,
-            shgc: data['Current Solar Heat Gain Coefficient'] || 0
+            northArea: data['Current Building Glazing 1_North Area (Agn)'] || 0,
+            southArea: data['Current Building Glazing 1_South Area (Ags)'] || 0,
+            eastArea: data['Current Building Glazing 1_East Area (Age)'] || 0,
+            westArea: data['Current Building Glazing 1_West Area (Agw)'] || 0,
+            perimeter: data['Current Building Glazing 1_Perimeter (Lg)'] || 0,
+            uValue: data['Current Building Glazing 1_U-Value (Ug)'] || 0.3,
+            shgc: data['Current Building Glazing 1_SHGC'] || 0
           }],
           buildingElements: [
-            { id: '1', name: 'Soffit', area: data['Current Soffit Area'] || 0, rValue: data['Current Soffit R-Value'] || 0 },
-            { id: '2', name: 'Basement Walls', area: data['Current Basement Area'] || 0, rValue: data['Current Basement R-Value'] || 0 },
-            { id: '3', name: 'Roof', area: data['Current Roof Area'] || 0, rValue: data['Current Roof R-Value'] || 0 },
-            { id: '4', name: 'Floor', area: data['Current Floor Area'] || 0, rValue: data['Current Floor R-Value'] || 0 },
-            { id: '5', name: 'Opaque Walls', area: data['Current Opaque Wall Area'] || 0, rValue: data['Current Opaque Wall R-Value'] || 0 }
+            { id: '1', name: 'Soffit', area: data['Current Building Element 1_Area (A)'] || 0, rValue: data['Current Building Element 1_R-Value (R)'] || 0 },
+            { id: '2', name: 'Basement Walls', area: data['Current Building Element 2_Area (A)'] || 0, rValue: data['Current Building Element 2_R-Value (R)'] || 0 },
+            { id: '3', name: 'Roof', area: data['Current Building Element 3_Area (A)'] || 0, rValue: data['Current Building Element 3_R-Value (R)'] || 0 },
+            { id: '4', name: 'Floor', area: data['Current Building Element 4_Area (A)'] || 0, rValue: data['Current Building Element 4_R-Value (R)'] || 0 },
+            { id: '5', name: 'Opaque Walls', area: data['Current Building Element 5_Area (A)'] || 0, rValue: data['Current Building Element 5_R-Value (R)'] || 0 }
           ]
         },
         proposedBuilding: {
           glazingElements: [{
             id: '1',
             name: 'Proposed Glazing',
-            northArea: data['Proposed North Glazing Area'] || 0,
-            southArea: data['Proposed South Glazing Area'] || 0,
-            eastArea: data['Proposed East Glazing Area'] || 0,
-            westArea: data['Proposed West Glazing Area'] || 0,
-            perimeter: data['Proposed Glazing Perimeter'] || 0,
-            uValue: data['Proposed Glazing U-Value'] || 0.3,
-            shgc: data['Proposed Solar Heat Gain Coefficient'] || 0
+            northArea: data['Proposed Building Glazing 1_North Area (Agn)'] || 0,
+            southArea: data['Proposed Building Glazing 1_South Area (Ags)'] || 0,
+            eastArea: data['Proposed Building Glazing 1_East Area (Age)'] || 0,
+            westArea: data['Proposed Building Glazing 1_West Area (Agw)'] || 0,
+            perimeter: data['Proposed Building Glazing 1_Perimeter (Lg)'] || 0,
+            uValue: data['Proposed Building Glazing 1_U-Value (Ug)'] || 0.3,
+            shgc: data['Proposed Building Glazing 1_SHGC'] || 0
           }],
           buildingElements: [
-            { id: '1', name: 'Soffit', area: data['Proposed Soffit Area'] || 0, rValue: data['Proposed Soffit R-Value'] || 0 },
-            { id: '2', name: 'Basement Walls', area: data['Proposed Basement Area'] || 0, rValue: data['Proposed Basement R-Value'] || 0 },
-            { id: '3', name: 'Roof', area: data['Proposed Roof Area'] || 0, rValue: data['Proposed Roof R-Value'] || 0 },
-            { id: '4', name: 'Floor', area: data['Proposed Floor Area'] || 0, rValue: data['Proposed Floor R-Value'] || 0 },
-            { id: '5', name: 'Opaque Walls', area: data['Proposed Opaque Wall Area'] || 0, rValue: data['Proposed Opaque Wall R-Value'] || 0 }
+            { id: '1', name: 'Soffit', area: data['Proposed Building Element 1_Area (A)'] || 0, rValue: data['Proposed Building Element 1_R-Value (R)'] || 0 },
+            { id: '2', name: 'Basement Walls', area: data['Proposed Building Element 2_Area (A)'] || 0, rValue: data['Proposed Building Element 2_R-Value (R)'] || 0 },
+            { id: '3', name: 'Roof', area: data['Proposed Building Element 3_Area (A)'] || 0, rValue: data['Proposed Building Element 3_R-Value (R)'] || 0 },
+            { id: '4', name: 'Floor', area: data['Proposed Building Element 4_Area (A)'] || 0, rValue: data['Proposed Building Element 4_R-Value (R)'] || 0 },
+            { id: '5', name: 'Opaque Walls', area: data['Proposed Building Element 5_Area (A)'] || 0, rValue: data['Proposed Building Element 5_R-Value (R)'] || 0 }
           ]
         },
         // Legacy fields for backward compatibility
-        heatingDegreeDays: data['Heating Degree Days'] || 0,
-        coolingDegreeDays: data['Cooling Degree Days'] || 0,
+        heatingDegreeDays: data['Climate Data_Heating Degree Days (Th)'] || 0,
+        coolingDegreeDays: data['Climate Data_Cooling Degree Days (Tc)'] || 0,
         currentEnergyLoad: 0, // Will be calculated
-        northGlazingArea: data['Current North Glazing Area'] || 0,
-        southGlazingArea: data['Current South Glazing Area'] || 0,
-        eastGlazingArea: data['Current East Glazing Area'] || 0,
-        westGlazingArea: data['Current West Glazing Area'] || 0,
-        northSolarRadiation: data['North Solar Radiation'] || 0,
-        southSolarRadiation: data['South Solar Radiation'] || 0,
-        eastSolarRadiation: data['East Solar Radiation'] || 0,
-        westSolarRadiation: data['West Solar Radiation'] || 0,
-        glazingPerimeter: data['Current Glazing Perimeter'] || 0,
-        glazingRValue: data['Current Glazing U-Value'] ? 1 / data['Current Glazing U-Value'] : 3.0,
-        solarHeatGainCoeff: data['Current Solar Heat Gain Coefficient'] || 0,
-        soffitArea: data['Current Soffit Area'] || 0,
-        soffitRValue: data['Current Soffit R-Value'] || 0,
-        basementArea: data['Current Basement Area'] || 0,
-        basementRValue: data['Current Basement R-Value'] || 0,
-        roofArea: data['Current Roof Area'] || 0,
-        roofRValue: data['Current Roof R-Value'] || 0,
-        floorArea: data['Current Floor Area'] || 0,
-        floorRValue: data['Current Floor R-Value'] || 0,
-        opaqueWallArea: data['Current Opaque Wall Area'] || 0,
-        opaqueWallRValue: data['Current Opaque Wall R-Value'] || 0,
+        northGlazingArea: data['Current Building Glazing 1_North Area (Agn)'] || 0,
+        southGlazingArea: data['Current Building Glazing 1_South Area (Ags)'] || 0,
+        eastGlazingArea: data['Current Building Glazing 1_East Area (Age)'] || 0,
+        westGlazingArea: data['Current Building Glazing 1_West Area (Agw)'] || 0,
+        northSolarRadiation: data['Climate Data_North Solar Radiation (Edn)'] || 0,
+        southSolarRadiation: data['Climate Data_South Solar Radiation (Eds)'] || 0,
+        eastSolarRadiation: data['Climate Data_East Solar Radiation (Ede)'] || 0,
+        westSolarRadiation: data['Climate Data_West Solar Radiation (Edw)'] || 0,
+        glazingPerimeter: data['Current Building Glazing 1_Perimeter (Lg)'] || 0,
+        glazingRValue: data['Current Building Glazing 1_U-Value (Ug)'] ? 1 / data['Current Building Glazing 1_U-Value (Ug)'] : 3.0,
+        solarHeatGainCoeff: data['Current Building Glazing 1_SHGC'] || 0,
+        soffitArea: data['Current Building Element 1_Area (A)'] || 0,
+        soffitRValue: data['Current Building Element 1_R-Value (R)'] || 0,
+        basementArea: data['Current Building Element 2_Area (A)'] || 0,
+        basementRValue: data['Current Building Element 2_R-Value (R)'] || 0,
+        roofArea: data['Current Building Element 3_Area (A)'] || 0,
+        roofRValue: data['Current Building Element 3_R-Value (R)'] || 0,
+        floorArea: data['Current Building Element 4_Area (A)'] || 0,
+        floorRValue: data['Current Building Element 4_R-Value (R)'] || 0,
+        opaqueWallArea: data['Current Building Element 5_Area (A)'] || 0,
+        opaqueWallRValue: data['Current Building Element 5_R-Value (R)'] || 0,
       };
 
       return calculatorInputs;
@@ -126,6 +134,7 @@ const CSVImporter = ({ onDataImported }: Props) => {
       if (parsedData) {
         setCsvData(parsedData);
         setFileName(file.name);
+        console.log('CSV data loaded successfully:', parsedData);
       } else {
         alert('Error parsing CSV file. Please check the format.');
       }

@@ -1,9 +1,10 @@
+
 import React, { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Copy, ArrowRight } from "lucide-react";
 import { CalculatorInputs, GlazingElement, BuildingElement, ClimateData } from "./HeatTransferCalculator";
 import EPWFileHandler from "./EPWFileHandler";
 
@@ -90,6 +91,49 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
     }));
   }, [setInputs]);
 
+  const duplicateGlazingElement = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding', id: string) => {
+    setInputs(prev => {
+      const elementToDuplicate = prev[buildingType].glazingElements.find(el => el.id === id);
+      if (!elementToDuplicate) return prev;
+      
+      const duplicatedElement = {
+        ...elementToDuplicate,
+        id: Date.now().toString(),
+        name: `${elementToDuplicate.name} (Copy)`
+      };
+      
+      return {
+        ...prev,
+        [buildingType]: {
+          ...prev[buildingType],
+          glazingElements: [...prev[buildingType].glazingElements, duplicatedElement]
+        }
+      };
+    });
+  }, [setInputs]);
+
+  const copyGlazingElementToOtherSide = useCallback((fromBuilding: 'currentBuilding' | 'proposedBuilding', id: string) => {
+    const toBuilding = fromBuilding === 'currentBuilding' ? 'proposedBuilding' : 'currentBuilding';
+    setInputs(prev => {
+      const elementToCopy = prev[fromBuilding].glazingElements.find(el => el.id === id);
+      if (!elementToCopy) return prev;
+      
+      const copiedElement = {
+        ...elementToCopy,
+        id: Date.now().toString(),
+        name: elementToCopy.name.replace(/current|proposed/gi, toBuilding === 'currentBuilding' ? 'Current' : 'Proposed')
+      };
+      
+      return {
+        ...prev,
+        [toBuilding]: {
+          ...prev[toBuilding],
+          glazingElements: [...prev[toBuilding].glazingElements, copiedElement]
+        }
+      };
+    });
+  }, [setInputs]);
+
   const removeGlazingElement = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding', id: string) => {
     setInputs(prev => ({
       ...prev,
@@ -128,6 +172,49 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
         ]
       }
     }));
+  }, [setInputs]);
+
+  const duplicateBuildingElement = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding', id: string) => {
+    setInputs(prev => {
+      const elementToDuplicate = prev[buildingType].buildingElements.find(el => el.id === id);
+      if (!elementToDuplicate) return prev;
+      
+      const duplicatedElement = {
+        ...elementToDuplicate,
+        id: Date.now().toString(),
+        name: `${elementToDuplicate.name} (Copy)`
+      };
+      
+      return {
+        ...prev,
+        [buildingType]: {
+          ...prev[buildingType],
+          buildingElements: [...prev[buildingType].buildingElements, duplicatedElement]
+        }
+      };
+    });
+  }, [setInputs]);
+
+  const copyBuildingElementToOtherSide = useCallback((fromBuilding: 'currentBuilding' | 'proposedBuilding', id: string) => {
+    const toBuilding = fromBuilding === 'currentBuilding' ? 'proposedBuilding' : 'currentBuilding';
+    setInputs(prev => {
+      const elementToCopy = prev[fromBuilding].buildingElements.find(el => el.id === id);
+      if (!elementToCopy) return prev;
+      
+      const copiedElement = {
+        ...elementToCopy,
+        id: Date.now().toString(),
+        name: elementToCopy.name.replace(/current|proposed/gi, toBuilding === 'currentBuilding' ? 'Current' : 'Proposed')
+      };
+      
+      return {
+        ...prev,
+        [toBuilding]: {
+          ...prev[toBuilding],
+          buildingElements: [...prev[toBuilding].buildingElements, copiedElement]
+        }
+      };
+    });
   }, [setInputs]);
 
   const removeBuildingElement = useCallback((buildingType: 'currentBuilding' | 'proposedBuilding', id: string) => {
@@ -174,15 +261,33 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
                 onChange={(e) => updateGlazingElement(buildingType, glazing.id, 'name', e.target.value)}
                 className="font-semibold"
               />
-              {inputs[buildingType].glazingElements.length > 1 && (
+              <div className="flex gap-2">
                 <Button
-                  onClick={() => removeGlazingElement(buildingType, glazing.id)}
+                  onClick={() => duplicateGlazingElement(buildingType, glazing.id)}
                   size="sm"
-                  variant="destructive"
+                  variant="outline"
+                  title="Duplicate"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Copy className="h-4 w-4" />
                 </Button>
-              )}
+                <Button
+                  onClick={() => copyGlazingElementToOtherSide(buildingType, glazing.id)}
+                  size="sm"
+                  variant="outline"
+                  title="Copy to other side"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                {inputs[buildingType].glazingElements.length > 1 && (
+                  <Button
+                    onClick={() => removeGlazingElement(buildingType, glazing.id)}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -276,15 +381,33 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
                 onChange={(e) => updateBuildingElement(buildingType, element.id, 'name', e.target.value)}
                 className="font-semibold max-w-xs"
               />
-              {inputs[buildingType].buildingElements.length > 1 && (
+              <div className="flex gap-2">
                 <Button
-                  onClick={() => removeBuildingElement(buildingType, element.id)}
+                  onClick={() => duplicateBuildingElement(buildingType, element.id)}
                   size="sm"
-                  variant="destructive"
+                  variant="outline"
+                  title="Duplicate"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Copy className="h-4 w-4" />
                 </Button>
-              )}
+                <Button
+                  onClick={() => copyBuildingElementToOtherSide(buildingType, element.id)}
+                  size="sm"
+                  variant="outline"
+                  title="Copy to other side"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                {inputs[buildingType].buildingElements.length > 1 && (
+                  <Button
+                    onClick={() => removeBuildingElement(buildingType, element.id)}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <InputField

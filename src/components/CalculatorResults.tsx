@@ -64,7 +64,8 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
         [`Current Building Glazing ${index + 1}`, 'West Area (Agw)', glazing.westArea, 'ft²', 'West-facing glazing area'],
         [`Current Building Glazing ${index + 1}`, 'Total Area', glazing.northArea + glazing.southArea + glazing.eastArea + glazing.westArea, 'ft²', 'Total glazing area'],
         [`Current Building Glazing ${index + 1}`, 'Perimeter (Lg)', glazing.perimeter, 'ft', 'Glazing perimeter'],
-        [`Current Building Glazing ${index + 1}`, 'R-Value (Rg)', glazing.rValue, 'ft²·°F·h/Btu', 'Thermal resistance'],
+        [`Current Building Glazing ${index + 1}`, 'U-Value (Ug)', glazing.uValue, 'Btu/ft²·°F·h', 'Thermal transmittance'],
+        [`Current Building Glazing ${index + 1}`, 'R-Value Equivalent', glazing.uValue > 0 ? 1 / glazing.uValue : 0, 'ft²·°F·h/Btu', 'Thermal resistance equivalent'],
         [`Current Building Glazing ${index + 1}`, 'SHGC', glazing.shgc, 'dimensionless', 'Solar heat gain coefficient'],
       ]),
       ...inputs.currentBuilding.buildingElements.flatMap((element, index) => [
@@ -83,7 +84,8 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
         [`Proposed Building Glazing ${index + 1}`, 'West Area (Agw)', glazing.westArea, 'ft²', 'West-facing glazing area'],
         [`Proposed Building Glazing ${index + 1}`, 'Total Area', glazing.northArea + glazing.southArea + glazing.eastArea + glazing.westArea, 'ft²', 'Total glazing area'],
         [`Proposed Building Glazing ${index + 1}`, 'Perimeter (Lg)', glazing.perimeter, 'ft', 'Glazing perimeter'],
-        [`Proposed Building Glazing ${index + 1}`, 'R-Value (Rg)', glazing.rValue, 'ft²·°F·h/Btu', 'Thermal resistance'],
+        [`Proposed Building Glazing ${index + 1}`, 'U-Value (Ug)', glazing.uValue, 'Btu/ft²·°F·h', 'Thermal transmittance'],
+        [`Proposed Building Glazing ${index + 1}`, 'R-Value Equivalent', glazing.uValue > 0 ? 1 / glazing.uValue : 0, 'ft²·°F·h/Btu', 'Thermal resistance equivalent'],
         [`Proposed Building Glazing ${index + 1}`, 'SHGC', glazing.shgc, 'dimensionless', 'Solar heat gain coefficient'],
       ]),
       ...inputs.proposedBuilding.buildingElements.flatMap((element, index) => [
