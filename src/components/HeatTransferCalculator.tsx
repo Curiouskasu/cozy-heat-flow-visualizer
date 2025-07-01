@@ -11,7 +11,7 @@ import CalculatorChartsComponent from "./CalculatorCharts";
 import InteractiveChartsManager from "./InteractiveChartsManager";
 import CSVImporter from "./CSVImporter";
 
-interface ClimateData {
+export interface ClimateData {
   isManualInput: boolean;
   heatingDegreeDays: number;
   coolingDegreeDays: number;
@@ -19,9 +19,10 @@ interface ClimateData {
   southSolarRadiation: number;
   eastSolarRadiation: number;
   westSolarRadiation: number;
+  epwFileName?: string;
 }
 
-interface GlazingElement {
+export interface GlazingElement {
   id: string;
   name: string;
   northArea: number;
@@ -33,30 +34,36 @@ interface GlazingElement {
   shgc: number;
 }
 
-interface BuildingElement {
+export interface BuildingElement {
   id: string;
   name: string;
   area: number;
   rValue: number;
 }
 
-interface BuildingData {
+export interface BuildingData {
   glazingElements: GlazingElement[];
   buildingElements: BuildingElement[];
 }
 
-interface CalculatorInputs {
+export interface CalculatorInputs {
   climateData: ClimateData;
   currentEnergyLoad: number;
   currentBuilding: BuildingData;
   proposedBuilding: BuildingData;
   heatingDegreeDays: number; // Legacy field
   coolingDegreeDays: number; // Legacy field
+  northGlazingArea: number; // Legacy field
+  southGlazingArea: number; // Legacy field
+  eastGlazingArea: number; // Legacy field
+  westGlazingArea: number; // Legacy field
   northSolarRadiation: number; // Legacy field
   southSolarRadiation: number; // Legacy field
   eastSolarRadiation: number; // Legacy field
   westSolarRadiation: number; // Legacy field
+  glazingPerimeter: number; // Legacy field
   glazingRValue: number; // Legacy field
+  solarHeatGainCoeff: number; // Legacy field
   soffitArea: number; // Legacy field
   soffitRValue: number; // Legacy field
   basementArea: number; // Legacy field
@@ -69,7 +76,7 @@ interface CalculatorInputs {
   opaqueWallRValue: number; // Legacy field
 }
 
-interface CalculatorResults {
+export interface CalculatorResults {
   envelopeHeatGain: number;
   infiltrationHeatGain: number;
   solarHeatGain: number;
@@ -146,11 +153,17 @@ const HeatTransferCalculator = () => {
     },
     heatingDegreeDays: 5000, // Legacy field
     coolingDegreeDays: 1000, // Legacy field
+    northGlazingArea: 100, // Legacy field
+    southGlazingArea: 100, // Legacy field
+    eastGlazingArea: 50, // Legacy field
+    westGlazingArea: 50, // Legacy field
     northSolarRadiation: 300, // Legacy field
     southSolarRadiation: 500, // Legacy field
     eastSolarRadiation: 400, // Legacy field
     westSolarRadiation: 400, // Legacy field
+    glazingPerimeter: 100, // Legacy field
     glazingRValue: 2, // Legacy field
+    solarHeatGainCoeff: 0.5, // Legacy field
     soffitArea: 100, // Legacy field
     soffitRValue: 30, // Legacy field
     basementArea: 500, // Legacy field
@@ -353,7 +366,7 @@ const HeatTransferCalculator = () => {
     }
   };
 
-  const handleCSVImport = (importedInputs: Partial<CalculatorInputs>) => {
+  const handleCSVImport = (importedInputs: CalculatorInputs) => {
     setInputs(prev => ({ ...prev, ...importedInputs }));
     toast("CSV data imported successfully");
   };
@@ -362,7 +375,7 @@ const HeatTransferCalculator = () => {
     <div className="w-full max-w-7xl mx-auto p-4 space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <CSVImporter onImport={handleCSVImport} />
+          <CSVImporter onDataImported={handleCSVImport} />
           
           <div className="flex gap-2">
             <Button
