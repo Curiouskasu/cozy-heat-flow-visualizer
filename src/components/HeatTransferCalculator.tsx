@@ -1,6 +1,10 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RotateCcw, Save } from "lucide-react";
 import CalculatorInputs from "./CalculatorInputs";
 import CalculatorResults from "./CalculatorResults";
 import CalculatorCharts from "./CalculatorCharts";
@@ -14,7 +18,7 @@ export interface GlazingElement {
   eastArea: number;
   westArea: number;
   perimeter: number;
-  rValue: number;
+  uValue: number; // Changed from rValue to uValue
   shgc: number;
 }
 
@@ -89,93 +93,118 @@ export interface CalculatorResults {
   proposedBuildingEnergy: number;
 }
 
+interface SavedState {
+  id: string;
+  name: string;
+  inputs: CalculatorInputs;
+  results: CalculatorResults;
+  timestamp: number;
+}
+
+const getEmptyInputs = (): CalculatorInputs => ({
+  climateData: {
+    heatingDegreeDays: 0,
+    coolingDegreeDays: 0,
+    northSolarRadiation: 0,
+    southSolarRadiation: 0,
+    eastSolarRadiation: 0,
+    westSolarRadiation: 0,
+    isManualInput: true,
+  },
+  currentBuilding: {
+    glazingElements: [{
+      id: '1',
+      name: 'Main Glazing',
+      northArea: 0,
+      southArea: 0,
+      eastArea: 0,
+      westArea: 0,
+      perimeter: 0,
+      uValue: 0.3, // Default U-value
+      shgc: 0
+    }],
+    buildingElements: [
+      { id: '1', name: 'Soffit', area: 0, rValue: 0 },
+      { id: '2', name: 'Basement Walls', area: 0, rValue: 0 },
+      { id: '3', name: 'Roof', area: 0, rValue: 0 },
+      { id: '4', name: 'Floor', area: 0, rValue: 0 },
+      { id: '5', name: 'Opaque Walls', area: 0, rValue: 0 }
+    ]
+  },
+  proposedBuilding: {
+    glazingElements: [{
+      id: '1',
+      name: 'Improved Glazing',
+      northArea: 0,
+      southArea: 0,
+      eastArea: 0,
+      westArea: 0,
+      perimeter: 0,
+      uValue: 0.2, // Better U-value
+      shgc: 0
+    }],
+    buildingElements: [
+      { id: '1', name: 'Soffit', area: 0, rValue: 0 },
+      { id: '2', name: 'Basement Walls', area: 0, rValue: 0 },
+      { id: '3', name: 'Roof', area: 0, rValue: 0 },
+      { id: '4', name: 'Floor', area: 0, rValue: 0 },
+      { id: '5', name: 'Opaque Walls', area: 0, rValue: 0 }
+    ]
+  },
+  // Legacy fields
+  heatingDegreeDays: 0,
+  coolingDegreeDays: 0,
+  currentEnergyLoad: 0,
+  northGlazingArea: 0,
+  southGlazingArea: 0,
+  eastGlazingArea: 0,
+  westGlazingArea: 0,
+  northSolarRadiation: 0,
+  southSolarRadiation: 0,
+  eastSolarRadiation: 0,
+  westSolarRadiation: 0,
+  glazingPerimeter: 0,
+  glazingRValue: 3.0,
+  solarHeatGainCoeff: 0,
+  soffitArea: 0,
+  soffitRValue: 0,
+  basementArea: 0,
+  basementRValue: 0,
+  roofArea: 0,
+  roofRValue: 0,
+  floorArea: 0,
+  floorRValue: 0,
+  opaqueWallArea: 0,
+  opaqueWallRValue: 0,
+});
+
 const HeatTransferCalculator = () => {
-  const [inputs, setInputs] = useState<CalculatorInputs>({
-    climateData: {
-      heatingDegreeDays: 3000,
-      coolingDegreeDays: 1000,
-      northSolarRadiation: 800,
-      southSolarRadiation: 1200,
-      eastSolarRadiation: 1000,
-      westSolarRadiation: 1000,
-      isManualInput: true,
-    },
-    currentBuilding: {
-      glazingElements: [{
-        id: '1',
-        name: 'Main Glazing',
-        northArea: 50,
-        southArea: 80,
-        eastArea: 60,
-        westArea: 60,
-        perimeter: 200,
-        rValue: 3.0,
-        shgc: 0.4
-      }],
-      buildingElements: [
-        { id: '1', name: 'Soffit', area: 100, rValue: 20 },
-        { id: '2', name: 'Basement Walls', area: 150, rValue: 10 },
-        { id: '3', name: 'Roof', area: 200, rValue: 30 },
-        { id: '4', name: 'Floor', area: 180, rValue: 15 },
-        { id: '5', name: 'Opaque Walls', area: 300, rValue: 12 }
-      ]
-    },
-    proposedBuilding: {
-      glazingElements: [{
-        id: '1',
-        name: 'Improved Glazing',
-        northArea: 50,
-        southArea: 80,
-        eastArea: 60,
-        westArea: 60,
-        perimeter: 200,
-        rValue: 5.0,
-        shgc: 0.3
-      }],
-      buildingElements: [
-        { id: '1', name: 'Soffit', area: 100, rValue: 30 },
-        { id: '2', name: 'Basement Walls', area: 150, rValue: 15 },
-        { id: '3', name: 'Roof', area: 200, rValue: 40 },
-        { id: '4', name: 'Floor', area: 180, rValue: 20 },
-        { id: '5', name: 'Opaque Walls', area: 300, rValue: 20 }
-      ]
-    },
-    // Legacy fields
-    heatingDegreeDays: 3000,
-    coolingDegreeDays: 1000,
-    currentEnergyLoad: 50000000,
-    northGlazingArea: 50,
-    southGlazingArea: 80,
-    eastGlazingArea: 60,
-    westGlazingArea: 60,
-    northSolarRadiation: 800,
-    southSolarRadiation: 1200,
-    eastSolarRadiation: 1000,
-    westSolarRadiation: 1000,
-    glazingPerimeter: 200,
-    glazingRValue: 3.0,
-    solarHeatGainCoeff: 0.4,
-    soffitArea: 100,
-    soffitRValue: 20,
-    basementArea: 150,
-    basementRValue: 10,
-    roofArea: 200,
-    roofRValue: 30,
-    floorArea: 180,
-    floorRValue: 15,
-    opaqueWallArea: 300,
-    opaqueWallRValue: 12,
-  });
+  const [inputs, setInputs] = useState<CalculatorInputs>(getEmptyInputs());
+  const [savedStates, setSavedStates] = useState<SavedState[]>([]);
+  const [selectedStateId, setSelectedStateId] = useState<string>('');
+
+  // Load saved states from localStorage on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem('calculator-saved-states');
+    if (saved) {
+      try {
+        const parsedStates = JSON.parse(saved);
+        setSavedStates(parsedStates);
+      } catch (error) {
+        console.error('Error loading saved states:', error);
+      }
+    }
+  }, []);
 
   const calculateBuildingEnergy = (building: BuildingData, climateData: ClimateData) => {
     // Calculate total UA value for building elements
     const buildingUAValue = building.buildingElements.reduce((sum, element) => 
-      sum + (element.area / element.rValue), 0);
+      sum + (element.area / (element.rValue || 1)), 0);
     
-    // Calculate total UA value for glazing elements
+    // Calculate total UA value for glazing elements (convert U-value to R-value)
     const glazingUAValue = building.glazingElements.reduce((sum, glazing) => {
       const totalGlazingArea = glazing.northArea + glazing.southArea + glazing.eastArea + glazing.westArea;
-      return sum + (totalGlazingArea / glazing.rValue);
+      return sum + (totalGlazingArea * (glazing.uValue || 0.3));
     }, 0);
     
     const totalUAValue = buildingUAValue + glazingUAValue;
@@ -208,11 +237,11 @@ const HeatTransferCalculator = () => {
                             inputs.eastGlazingArea + inputs.westGlazingArea;
     
     const totalUAValue = (totalGlazingArea / inputs.glazingRValue) +
-                        (inputs.soffitArea / inputs.soffitRValue) +
-                        (inputs.basementArea / inputs.basementRValue) +
-                        (inputs.roofArea / inputs.roofRValue) +
-                        (inputs.floorArea / inputs.floorRValue) +
-                        (inputs.opaqueWallArea / inputs.opaqueWallRValue);
+                        (inputs.soffitArea / (inputs.soffitRValue || 1)) +
+                        (inputs.basementArea / (inputs.basementRValue || 1)) +
+                        (inputs.roofArea / (inputs.roofRValue || 1)) +
+                        (inputs.floorArea / (inputs.floorRValue || 1)) +
+                        (inputs.opaqueWallArea / (inputs.opaqueWallRValue || 1));
     
     const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
     const envelopeHeatGain = totalUAValue * inputs.coolingDegreeDays;
@@ -245,9 +274,81 @@ const HeatTransferCalculator = () => {
     setInputs(importedData);
   };
 
+  const saveCurrentState = () => {
+    const newState: SavedState = {
+      id: Date.now().toString(),
+      name: `Calculation ${new Date().toLocaleString()}`,
+      inputs: { ...inputs },
+      results: { ...results },
+      timestamp: Date.now()
+    };
+
+    const newStates = [newState, ...savedStates.slice(0, 2)]; // Keep only 3 states
+    setSavedStates(newStates);
+    localStorage.setItem('calculator-saved-states', JSON.stringify(newStates));
+    alert('Current state saved successfully!');
+  };
+
+  const loadSavedState = (stateId: string) => {
+    const state = savedStates.find(s => s.id === stateId);
+    if (state) {
+      setInputs(state.inputs);
+      setSelectedStateId(stateId);
+    }
+  };
+
+  const resetToZero = () => {
+    setInputs(getEmptyInputs());
+    setSelectedStateId('');
+  };
+
   return (
     <div className="space-y-6">
       <CSVImporter onDataImported={handleCSVImport} />
+      
+      {/* State Management Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle>State Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4 flex-wrap">
+            <Button
+              onClick={saveCurrentState}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Save Current State
+            </Button>
+            <Button
+              onClick={resetToZero}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset to Zero
+            </Button>
+            {savedStates.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Load Previous:</span>
+                <Select value={selectedStateId} onValueChange={loadSavedState}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select previous calculation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedStates.map((state) => (
+                      <SelectItem key={state.id} value={state.id}>
+                        {state.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       
       <Tabs defaultValue="inputs" className="w-full">
         <TabsList className="grid w-full grid-cols-3">

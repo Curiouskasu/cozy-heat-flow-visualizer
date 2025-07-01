@@ -115,6 +115,42 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     { name: 'Opaque Walls', area: inputs.opaqueWallArea, rValue: inputs.opaqueWallRValue, color: '#808080' },
   ];
 
+  // Glazing U-value analysis (U 0.1 to U 0.8, increment 0.05)
+  const glazingUValueAnalysisData = [];
+  let maxGlazingHeatLoss = 0;
+
+  // First pass to find the maximum heat loss
+  for (let u = 0.1; u <= 0.8; u += 0.05) {
+    const totalUAValue = (results.totalGlazingArea * u) +
+                        (inputs.soffitArea / (inputs.soffitRValue || 1)) +
+                        (inputs.basementArea / (inputs.basementRValue || 1)) +
+                        (inputs.roofArea / (inputs.roofRValue || 1)) +
+                        (inputs.floorArea / (inputs.floorRValue || 1)) +
+                        (inputs.opaqueWallArea / (inputs.opaqueWallRValue || 1));
+    
+    const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
+    maxGlazingHeatLoss = Math.max(maxGlazingHeatLoss, envelopeHeatLoss);
+  }
+
+  // Second pass to calculate energy saved compared to maximum
+  for (let u = 0.1; u <= 0.8; u += 0.05) {
+    const totalUAValue = (results.totalGlazingArea * u) +
+                        (inputs.soffitArea / (inputs.soffitRValue || 1)) +
+                        (inputs.basementArea / (inputs.basementRValue || 1)) +
+                        (inputs.roofArea / (inputs.roofRValue || 1)) +
+                        (inputs.floorArea / (inputs.floorRValue || 1)) +
+                        (inputs.opaqueWallArea / (inputs.opaqueWallRValue || 1));
+    
+    const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
+    const energySaved = ((maxGlazingHeatLoss - envelopeHeatLoss) / maxGlazingHeatLoss * 100);
+    
+    glazingUValueAnalysisData.push({
+      uValue: parseFloat(u.toFixed(2)),
+      heatLoss: envelopeHeatLoss,
+      energySaved: energySaved
+    });
+  }
+
   // Total calculated energy vs current energy load
   const totalCalculatedEnergy = results.envelopeHeatGain + results.envelopeHeatLoss + 
                                results.infiltrationHeatGain + results.infiltrationHeatLoss + 
@@ -172,8 +208,8 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
   }
 
   // Glazing U-value analysis (U 0.3 to U 0.1, increment 0.02)
-  const glazingUValueAnalysisData = [];
-  let maxGlazingHeatLoss = 0;
+  const glazingUValueAnalysisData2 = [];
+  let maxGlazingHeatLoss2 = 0;
 
   // First pass to find the maximum heat loss
   for (let u = 0.3; u >= 0.1; u -= 0.02) {
@@ -185,7 +221,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                         (inputs.opaqueWallArea / inputs.opaqueWallRValue);
     
     const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
-    maxGlazingHeatLoss = Math.max(maxGlazingHeatLoss, envelopeHeatLoss);
+    maxGlazingHeatLoss2 = Math.max(maxGlazingHeatLoss2, envelopeHeatLoss);
   }
 
   // Second pass to calculate energy saved compared to maximum
@@ -198,9 +234,9 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                         (inputs.opaqueWallArea / inputs.opaqueWallRValue);
     
     const envelopeHeatLoss = totalUAValue * inputs.heatingDegreeDays;
-    const energySaved = ((maxGlazingHeatLoss - envelopeHeatLoss) / maxGlazingHeatLoss * 100);
+    const energySaved = ((maxGlazingHeatLoss2 - envelopeHeatLoss) / maxGlazingHeatLoss2 * 100);
     
-    glazingUValueAnalysisData.push({
+    glazingUValueAnalysisData2.push({
       uValue: parseFloat(u.toFixed(2)),
       heatLoss: envelopeHeatLoss,
       energySaved: energySaved
@@ -569,7 +605,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadChart('glazing-uvalue-chart', 'glazing-uvalue-analysis')}
+              onClick={() => downloadChart('glazing-uvalue-analysis-chart', 'glazing-uvalue-analysis')}
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -585,7 +621,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={glazingUValueAnalysisData} id="glazing-uvalue-chart">
+              <ComposedChart data={glazingUValueAnalysisData} id="glazing-uvalue-analysis-chart">
                 <XAxis 
                   dataKey="uValue" 
                   label={{ value: 'Glazing U-Value (Btu/ft²·°F·h)', position: 'insideBottom', offset: -5 }}
@@ -634,85 +670,6 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
                   stroke="#e97132" 
                   strokeWidth={2}
                   dot={{ fill: '#e97132', strokeWidth: 1, r: 2 }}
-                  name="Energy Saved %"
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Roof R-Value Analysis</CardTitle>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => downloadChart('roof-rvalue-chart', 'roof-rvalue-analysis')}
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => downloadCSV(roofRValueAnalysisData, 'roof-rvalue-analysis-data')}
-            >
-              <FileText className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={roofRValueAnalysisData} id="roof-rvalue-chart">
-                <XAxis 
-                  dataKey="rValue" 
-                  label={{ value: 'Roof R-Value (ft²·°F·h/Btu)', position: 'insideBottom', offset: -5 }}
-                />
-                <YAxis 
-                  yAxisId="left"
-                  label={{ value: 'Heat Loss (Btu/year)', angle: -90, position: 'insideLeft' }}
-                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
-                />
-                <YAxis 
-                  yAxisId="right"
-                  orientation="right"
-                  label={{ value: 'Energy Saved (%)', angle: 90, position: 'insideRight' }}
-                  domain={[0, 100]}
-                />
-                <ChartTooltip 
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length > 0) {
-                      return (
-                        <div className="bg-white p-2 border rounded shadow">
-                          <p className="font-medium">R-Value: {label} ft²·°F·h/Btu</p>
-                          {payload.map((entry, index) => (
-                            <p key={index} className="text-sm" style={{color: entry.color}}>
-                              {entry.dataKey === 'energySaved' ? 
-                                `Energy Saved: ${Number(entry.value).toFixed(1)}%` : 
-                                `Heat Loss: ${Number(entry.value).toLocaleString()} Btu/year`}
-                            </p>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar 
-                  yAxisId="left"
-                  dataKey="heatLoss" 
-                  fill="#156082"
-                  name="Heat Loss"
-                />
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="energySaved" 
-                  stroke="#e97132" 
-                  strokeWidth={2}
-                  dot={{ fill: '#e97132', strokeWidth: 1, r: 3 }}
                   name="Energy Saved %"
                 />
               </ComposedChart>

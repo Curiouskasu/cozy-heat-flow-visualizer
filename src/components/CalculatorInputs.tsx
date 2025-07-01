@@ -82,8 +82,8 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
             eastArea: 0,
             westArea: 0,
             perimeter: 0,
-            rValue: 3.0,
-            shgc: 0.4
+            uValue: 0.3, // Default U-value
+            shgc: 0
           }
         ]
       }
@@ -225,11 +225,12 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
                 onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'perimeter', value)}
               />
               <InputField
-                label="R-Value (Rg)"
-                field={`${buildingType}-${glazing.id}-rValue`}
-                unit="ft²·°F·h/Btu"
-                value={glazing.rValue}
-                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'rValue', value)}
+                label="U-Value (Ug)"
+                field={`${buildingType}-${glazing.id}-uValue`}
+                unit="Btu/ft²·°F·h"
+                step="0.01"
+                value={glazing.uValue}
+                onChange={(value) => updateGlazingElement(buildingType, glazing.id, 'uValue', value)}
               />
               <InputField
                 label="SHGC"
@@ -241,6 +242,11 @@ const CalculatorInputsComponent = ({ inputs, setInputs }: Props) => {
             
             <div className="text-sm text-muted-foreground">
               Total Glazing Area: {(glazing.northArea + glazing.southArea + glazing.eastArea + glazing.westArea).toFixed(1)} ft²
+              {glazing.uValue > 0 && (
+                <span className="ml-4">
+                  R-Value Equivalent: {(1 / glazing.uValue).toFixed(2)} ft²·°F·h/Btu
+                </span>
+              )}
             </div>
           </div>
         ))}
