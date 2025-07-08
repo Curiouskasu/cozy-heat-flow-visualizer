@@ -11,18 +11,18 @@ interface DragDropItem {
   [key: string]: any;
 }
 
-interface Props {
-  items: DragDropItem[];
-  onReorder: (items: DragDropItem[]) => void;
+interface Props<T extends DragDropItem> {
+  items: T[];
+  onReorder: (items: T[]) => void;
   onDuplicate: (id: string) => void;
   onCopyToOtherSide: (id: string) => void;
   onRemove: (id: string) => void;
   onUpdate: (id: string, field: string, value: any) => void;
-  renderFields: (item: DragDropItem) => React.ReactNode;
+  renderFields: (item: T) => React.ReactNode;
   allowRemove?: boolean;
 }
 
-const DragDropList = ({ 
+const DragDropList = <T extends DragDropItem>({ 
   items, 
   onReorder, 
   onDuplicate, 
@@ -31,7 +31,7 @@ const DragDropList = ({
   onUpdate,
   renderFields,
   allowRemove = true 
-}: Props) => {
+}: Props<T>) => {
   const [draggedItem, setDraggedItem] = React.useState<string | null>(null);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {

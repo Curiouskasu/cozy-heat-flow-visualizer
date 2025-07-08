@@ -83,6 +83,8 @@ export interface CalculatorResults {
   envelopeHeatLoss: number;
   infiltrationHeatLoss: number;
   totalGlazingArea: number;
+  currentBuildingEnergy: number;
+  proposedBuildingEnergy: number;
 }
 
 interface SavedState {
@@ -251,9 +253,14 @@ const HeatTransferCalculator = () => {
     let solarHeatGain = 0;
     let totalGlazingArea = 0;
 
+    // Current Building Calculations
+    let currentEnvelopeHeatLoss = 0;
+    let currentEnvelopeHeatGain = 0;
+    let currentSolarHeatGain = 0;
+
     // Heat Loss through Building Elements
     inputs.currentBuilding.buildingElements.forEach((element) => {
-      envelopeHeatLoss += calculateHeatLoss(
+      currentEnvelopeHeatLoss += calculateHeatLoss(
         element.area,
         element.rValue,
         inputs.climateData.heatingDegreeDays
@@ -262,14 +269,14 @@ const HeatTransferCalculator = () => {
 
     // Heat Gain through Building Elements
     inputs.currentBuilding.buildingElements.forEach((element) => {
-      envelopeHeatGain += calculateHeatGain(
+      currentEnvelopeHeatGain += calculateHeatGain(
         element.area,
         1 / element.rValue,
         inputs.climateData.coolingDegreeDays
       );
     });
 
-    // Glazing Calculations
+    // Glazing Calculations for Current Building
     inputs.currentBuilding.glazingElements.forEach((glazing) => {
       const glazingArea =
         glazing.northArea +
@@ -278,18 +285,18 @@ const HeatTransferCalculator = () => {
         glazing.westArea;
       totalGlazingArea += glazingArea;
 
-      envelopeHeatLoss += calculateHeatLoss(
+      currentEnvelopeHeatLoss += calculateHeatLoss(
         glazingArea,
         1 / glazing.uValue,
         inputs.climateData.heatingDegreeDays
       );
-      envelopeHeatGain += calculateHeatGain(
+      currentEnvelopeHeatGain += calculateHeatGain(
         glazingArea,
         glazing.uValue,
         inputs.climateData.coolingDegreeDays
       );
 
-      solarHeatGain +=
+      currentSolarHeatGain +=
         calculateSolarHeatGain(
           glazing.northArea,
           glazing.shgc,
@@ -312,6 +319,66 @@ const HeatTransferCalculator = () => {
         );
     });
 
+    // Proposed Building Calculations
+    let proposedEnvelopeHeatLoss = 0;
+    let proposedEnvelopeHeatGain = 0;
+    let proposedSolarHeatGain = 0;
+
+    // Heat Loss through Building Elements
+    inputs.proposedBuilding.buildingElements.forEach((element) => {
+      proposedEnvelopeHeatLoss += calculateHeatLoss(
+        element.area,
+        element.rValue,
+        inputs.climateData.heatingDegreeDays
+      );
+    });
+
+    // Heat Gain through Building Elements
+    inputs.proposedBuilding.buildingElements.forEach((element) => {
+      proposedEnvelopeHeatGain += calculateHeatGain(
+        element.area,
+        1 / element.rValue,
+        inputs.climateData.coolingDegreeDays
+      );
+    });
+
+    // Glazing Calculations for Proposed Building
+    inputs.proposedBuilding.glazingElements.forEach((glazing) => {
+      const glazingArea =
+        glazing.northArea +
+        glazing.southArea +
+        glazing.eastArea +
+        glazing.westArea;
+
+      proposedEnvelopeHeatLoss += calculateHeatLoss(
+        glazingArea,
+        1 / glazing.uValue,
+        inputs.climateData.heatingDegreeDays
+      );
+      proposedEnvelopeHeatGain += calculateHeatGain(
+        glazingArea,
+        glazing.uValue,
+        inputs.climateData.coolingDegreeDays
+      );
+
+      proposedSolarHeatGain +=
+        calculateSolarHeatGain(
+          glazing.northArea,
+          glazing.shgc,
+          inputs.climateData.northSolarRadiation
+        ) +
+        calculateSolarHeatGain(
+          glazing.southArea,
+          glazing.shgc,
+          inputs.climateData.southSolarRadiation
+        ) +
+        calculateSolarHeatGain(
+          glazing.eastArea,
+          glazing.shgc,
+          inputs.climateData.westSolarRadiation
+        );
+    });
+
     const infiltrationHeatLoss = calculateInfiltrationHeatLoss(
       10000, // Example volume
       0.5, // Example ACH
@@ -324,6 +391,19 @@ const HeatTransferCalculator = () => {
       inputs.climateData.coolingDegreeDays
     );
 
+    // Use current building values for legacy results
+    envelopeHeatLoss = currentEnvelopeHeatLoss;
+    envelopeHeatGain = currentEnvelopeHeatGain;
+    solarHeatGain = currentSolarHeatGain;
+
+    const currentBuildingEnergy = Math.round(
+      currentEnvelopeHeatLoss + currentEnvelopeHeatGain + currentSolarHeatGain + infiltrationHeatLoss + infiltrationHeatGain
+    );
+
+    const proposedBuildingEnergy = Math.round(
+      proposedEnvelopeHeatLoss + proposedEnvelopeHeatGain + proposedSolarHeatGain + infiltrationHeatLoss + infiltrationHeatGain
+    );
+
     return {
       envelopeHeatGain: Math.round(envelopeHeatGain),
       infiltrationHeatGain: Math.round(infiltrationHeatGain),
@@ -331,6 +411,8 @@ const HeatTransferCalculator = () => {
       envelopeHeatLoss: Math.round(envelopeHeatLoss),
       infiltrationHeatLoss: Math.round(infiltrationHeatLoss),
       totalGlazingArea: Math.round(totalGlazingArea),
+      currentBuildingEnergy,
+      proposedBuildingEnergy,
     };
   };
 
