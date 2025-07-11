@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -247,7 +248,29 @@ const HeatTransferCalculator = () => {
     const saved = localStorage.getItem('heatTransferInputs');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsedInputs = JSON.parse(saved);
+        // Ensure buildingColumns exists, if not create from legacy data
+        if (!parsedInputs.buildingColumns) {
+          parsedInputs.buildingColumns = [
+            {
+              id: 'current',
+              name: 'Current Building',
+              building: parsedInputs.currentBuilding || {
+                glazingElements: [],
+                buildingElements: []
+              }
+            },
+            {
+              id: 'proposed',
+              name: 'Proposed Building',
+              building: parsedInputs.proposedBuilding || {
+                glazingElements: [],
+                buildingElements: []
+              }
+            }
+          ];
+        }
+        return parsedInputs;
       } catch (e) {
         console.error('Failed to parse saved inputs:', e);
       }
@@ -313,9 +336,27 @@ const HeatTransferCalculator = () => {
   };
 
   const calculateResults = (inputs: CalculatorInputs): CalculatorResults => {
-    // Use legacy buildings for backward compatibility
-    const currentBuilding = inputs.buildingColumns.find(col => col.id === 'current')?.building || inputs.currentBuilding;
-    const proposedBuilding = inputs.buildingColumns.find(col => col.id === 'proposed')?.building || inputs.proposedBuilding;
+    // Ensure buildingColumns exists and has the required columns
+    const buildingColumns = inputs.buildingColumns || [];
+    
+    // Use buildingColumns if available, otherwise fall back to legacy buildings
+    const currentBuilding = buildingColumns.find(col => col.id === 'current')?.building || inputs.currentBuilding;
+    const proposedBuilding = buildingColumns.find(col => col.id === 'proposed')?.building || inputs.proposedBuilding;
+
+    // Ensure we have valid building data
+    if (!currentBuilding || !proposedBuilding) {
+      console.error('Missing building data for calculations');
+      return {
+        envelopeHeatGain: 0,
+        infiltrationHeatGain: 0,
+        solarHeatGain: 0,
+        envelopeHeatLoss: 0,
+        infiltrationHeatLoss: 0,
+        totalGlazingArea: 0,
+        currentBuildingEnergy: 0,
+        proposedBuildingEnergy: 0,
+      };
+    }
 
     let envelopeHeatLoss = 0;
     let envelopeHeatGain = 0;
@@ -328,7 +369,7 @@ const HeatTransferCalculator = () => {
     let currentSolarHeatGain = 0;
 
     // Heat Loss through Building Elements
-    currentBuilding.buildingElements.forEach((element) => {
+    (currentBuilding.buildingElements || []).forEach((element) => {
       currentEnvelopeHeatLoss += calculateHeatLoss(
         element.area,
         element.rValue,
@@ -337,7 +378,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Heat Gain through Building Elements
-    currentBuilding.buildingElements.forEach((element) => {
+    (currentBuilding.buildingElements || []).forEach((element) => {
       currentEnvelopeHeatGain += calculateHeatGain(
         element.area,
         1 / element.rValue,
@@ -346,7 +387,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Glazing Calculations for Current Building
-    currentBuilding.glazingElements.forEach((glazing) => {
+    (currentBuilding.glazingElements || []).forEach((glazing) => {
       const glazingArea =
         glazing.northArea +
         glazing.southArea +
@@ -394,7 +435,7 @@ const HeatTransferCalculator = () => {
     let proposedSolarHeatGain = 0;
 
     // Heat Loss through Building Elements
-    proposedBuilding.buildingElements.forEach((element) => {
+    (proposedBuilding.buildingElements || []).forEach((element) => {
       proposedEnvelopeHeatLoss += calculateHeatLoss(
         element.area,
         element.rValue,
@@ -403,7 +444,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Heat Gain through Building Elements
-    proposedBuilding.buildingElements.forEach((element) => {
+    (proposedBuilding.buildingElements || []).forEach((element) => {
       proposedEnvelopeHeatGain += calculateHeatGain(
         element.area,
         1 / element.rValue,
@@ -412,7 +453,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Glazing Calculations for Proposed Building
-    proposedBuilding.glazingElements.forEach((glazing) => {
+    (proposedBuilding.glazingElements || []).forEach((glazing) => {
       const glazingArea =
         glazing.northArea +
         glazing.southArea +
