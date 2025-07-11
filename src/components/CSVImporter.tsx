@@ -48,6 +48,7 @@ const CSVImporter = ({ onDataImported }: Props) => {
           isManualInput: true,
         },
         currentEnergyLoad: 0,
+        airflowRate: data['Airflow Rate'] || 1000,
         buildingColumns: [
           {
             id: 'current',
