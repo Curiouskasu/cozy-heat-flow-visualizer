@@ -116,7 +116,7 @@ const HeatTransferCalculator = () => {
       westSolarRadiation: 400,
     },
     currentEnergyLoad: 50000000,
-    airflowRate: 1000,
+    airflowRate: 0.01,
     buildingColumns: [
       {
         id: 'building1',
@@ -304,7 +304,7 @@ const HeatTransferCalculator = () => {
     airflowRate: number,
     degreeDays: number
   ): number => {
-    return totalPerimeter * 1.08 * airflowRate * degreeDays;
+    return totalPerimeter * 1.08 * airflowRate * degreeDays * (24/1000);
   };
 
   const calculateResults = (inputs: CalculatorInputs): CalculatorResults => {

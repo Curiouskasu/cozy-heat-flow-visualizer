@@ -1,7 +1,7 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Upload } from 'lucide-react';
+import { Upload, Database } from 'lucide-react';
 
 interface Props {
   columnId: string;
@@ -10,6 +10,8 @@ interface Props {
 
 const CSVColumnImporter = ({ columnId, onDataImported }: Props) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [csvData, setCsvData] = useState<any>(null);
+  const [fileName, setFileName] = useState<string>('');
 
   const parseCSVData = (csvContent: string): any => {
     try {
@@ -71,7 +73,8 @@ const CSVColumnImporter = ({ columnId, onDataImported }: Props) => {
       const parsedData = parseCSVData(content);
       
       if (parsedData) {
-        onDataImported(columnId, parsedData);
+        setCsvData(parsedData);
+        setFileName(file.name);
         console.log('CSV data loaded for column:', columnId, parsedData);
       } else {
         alert('Error parsing CSV file. Please check the format.');
@@ -86,17 +89,43 @@ const CSVColumnImporter = ({ columnId, onDataImported }: Props) => {
     }
   };
 
+  const handleFillInputs = () => {
+    if (csvData) {
+      onDataImported(columnId, csvData);
+      alert(`CSV data imported successfully for ${columnId}!`);
+      setCsvData(null);
+      setFileName('');
+    }
+  };
+
   return (
-    <div className="mb-4">
-      <Button
-        onClick={() => fileInputRef.current?.click()}
-        size="sm"
-        variant="outline"
-        className="w-full flex items-center gap-2"
-      >
-        <Upload className="h-3 w-3" />
-        Import CSV
-      </Button>
+    <div className="mb-4 space-y-2">
+      <div className="flex gap-2">
+        <Button
+          onClick={() => fileInputRef.current?.click()}
+          size="sm"
+          variant="outline"
+          className="flex-1 flex items-center gap-2"
+        >
+          <Upload className="h-3 w-3" />
+          Import CSV
+        </Button>
+        {csvData && (
+          <Button
+            onClick={handleFillInputs}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Database className="h-3 w-3" />
+            Fill
+          </Button>
+        )}
+      </div>
+      {fileName && (
+        <div className="text-xs text-muted-foreground">
+          Loaded: {fileName}
+        </div>
+      )}
       <input
         ref={fileInputRef}
         type="file"
