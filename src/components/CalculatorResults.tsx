@@ -45,6 +45,9 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
       // Header
       ['Category', 'Parameter', 'Value', 'Unit', 'Description'],
       
+      // Airflow Data
+      ['Airflow Data', 'Airflow Rate', inputs.airflowRate, 'CFM', 'Cubic feet per minute of air flow'],
+      
       // Climate Data
       ['Climate Data', 'Heating Degree Days (Th)', inputs.climateData.heatingDegreeDays, '°F-days', 'Annual heating degree days'],
       ['Climate Data', 'Cooling Degree Days (Tc)', inputs.climateData.coolingDegreeDays, '°F-days', 'Annual cooling degree days'],
@@ -105,8 +108,8 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
       ['Formulas', '', '', '', ''],
       ['Formulas', 'Envelope Heat Loss', 'Qel = Σ(A/R) × Th', 'Btu/year', 'Sum of all building element areas divided by R-values, multiplied by heating degree days'],
       ['Formulas', 'Envelope Heat Gain', 'Qeg = Σ(A/R) × Tc', 'Btu/year', 'Sum of all building element areas divided by R-values, multiplied by cooling degree days'],
-      ['Formulas', 'Infiltration Heat Loss', 'Qil = Σ(Lg) × Th', 'Btu/year', 'Sum of glazing perimeters multiplied by heating degree days'],
-      ['Formulas', 'Infiltration Heat Gain', 'Qig = Σ(Lg) × Tc', 'Btu/year', 'Sum of glazing perimeters multiplied by cooling degree days'],
+      ['Formulas', 'Infiltration Heat Loss', 'Qil = Σ(Lg) × 1.08 × Airflow Rate × Th', 'Btu/year', 'Sum of glazing perimeters times 1.08 times airflow rate times heating degree days'],
+      ['Formulas', 'Infiltration Heat Gain', 'Qig = Σ(Lg) × 1.08 × Airflow Rate × Tc', 'Btu/year', 'Sum of glazing perimeters times 1.08 times airflow rate times cooling degree days'],
       ['Formulas', 'Solar Heat Gain', 'Qshg = Σ(Agn×Edn + Ags×Eds + Age×Ede + Agw×Edw) × SHGC', 'Btu/year', 'Sum of glazing areas times solar radiation by orientation, multiplied by SHGC'],
       ['Formulas', 'Total Building Energy', 'Q = Qel + Qeg + Qil + Qig + Qshg', 'Btu/year', 'Sum of all heat transfer components'],
     ];
@@ -127,7 +130,7 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Building Energy Comparison & Complete Results</CardTitle>
+          <CardTitle className="font-bold">Building Energy Comparison & Complete Results</CardTitle>
           <Button
             variant="outline"
             onClick={downloadResultsCSV}
@@ -179,11 +182,11 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
             </div>
             <div>
               <div className="font-semibold mb-2">Infiltration Loss:</div>
-              <div>Qil = Σ(Lg) × Th</div>
+              <div>Qil = Σ(Lg) × 1.08 × Airflow Rate × Th</div>
             </div>
             <div>
               <div className="font-semibold mb-2">Infiltration Gain:</div>
-              <div>Qig = Σ(Lg) × Tc</div>
+              <div>Qig = Σ(Lg) × 1.08 × Airflow Rate × Tc</div>
             </div>
             <div className="md:col-span-2">
               <div className="font-semibold mb-2">Solar Heat Gain:</div>

@@ -55,6 +55,7 @@ export interface BuildingColumn {
 export interface CalculatorInputs {
   climateData: ClimateData;
   currentEnergyLoad: number;
+  airflowRate: number;
   buildingColumns: BuildingColumn[];
   // Legacy fields for backward compatibility
   currentBuilding: BuildingData;
@@ -115,6 +116,7 @@ const HeatTransferCalculator = () => {
       westSolarRadiation: 400,
     },
     currentEnergyLoad: 50000000,
+    airflowRate: 1000,
     buildingColumns: [
       {
         id: 'building1',
@@ -298,13 +300,11 @@ const HeatTransferCalculator = () => {
   };
 
   const calculateInfiltrationHeatLoss = (
-    volume: number,
-    ach: number,
+    totalPerimeter: number,
+    airflowRate: number,
     degreeDays: number
   ): number => {
-    const airDensity = 0.0765; // lb/ft^3
-    const specificHeat = 0.24; // BTU/lb*F
-    return volume * ach * airDensity * specificHeat * degreeDays * 24;
+    return totalPerimeter * 1.08 * airflowRate * degreeDays;
   };
 
   const calculateResults = (inputs: CalculatorInputs): CalculatorResults => {
@@ -339,6 +339,7 @@ const HeatTransferCalculator = () => {
     let currentEnvelopeHeatLoss = 0;
     let currentEnvelopeHeatGain = 0;
     let currentSolarHeatGain = 0;
+    let currentTotalPerimeter = 0;
 
     // Heat Loss through Building Elements
     (currentBuilding.buildingElements || []).forEach((element) => {
@@ -366,6 +367,7 @@ const HeatTransferCalculator = () => {
         glazing.eastArea +
         glazing.westArea;
       totalGlazingArea += glazingArea;
+      currentTotalPerimeter += glazing.perimeter;
 
       currentEnvelopeHeatLoss += calculateHeatLoss(
         glazingArea,
@@ -405,6 +407,7 @@ const HeatTransferCalculator = () => {
     let proposedEnvelopeHeatLoss = 0;
     let proposedEnvelopeHeatGain = 0;
     let proposedSolarHeatGain = 0;
+    let proposedTotalPerimeter = 0;
 
     // Heat Loss through Building Elements
     (proposedBuilding.buildingElements || []).forEach((element) => {
@@ -431,6 +434,7 @@ const HeatTransferCalculator = () => {
         glazing.southArea +
         glazing.eastArea +
         glazing.westArea;
+      proposedTotalPerimeter += glazing.perimeter;
 
       proposedEnvelopeHeatLoss += calculateHeatLoss(
         glazingArea,
@@ -466,15 +470,27 @@ const HeatTransferCalculator = () => {
         );
     });
 
-    const infiltrationHeatLoss = calculateInfiltrationHeatLoss(
-      10000, // Example volume
-      0.5, // Example ACH
+    const currentInfiltrationHeatLoss = calculateInfiltrationHeatLoss(
+      currentTotalPerimeter,
+      inputs.airflowRate,
       inputs.climateData.heatingDegreeDays
     );
 
-    const infiltrationHeatGain = calculateInfiltrationHeatLoss(
-      10000, // Example volume
-      0.5, // Example ACH
+    const currentInfiltrationHeatGain = calculateInfiltrationHeatLoss(
+      currentTotalPerimeter,
+      inputs.airflowRate,
+      inputs.climateData.coolingDegreeDays
+    );
+
+    const proposedInfiltrationHeatLoss = calculateInfiltrationHeatLoss(
+      proposedTotalPerimeter,
+      inputs.airflowRate,
+      inputs.climateData.heatingDegreeDays
+    );
+
+    const proposedInfiltrationHeatGain = calculateInfiltrationHeatLoss(
+      proposedTotalPerimeter,
+      inputs.airflowRate,
       inputs.climateData.coolingDegreeDays
     );
 
@@ -484,19 +500,19 @@ const HeatTransferCalculator = () => {
     solarHeatGain = currentSolarHeatGain;
 
     const currentBuildingEnergy = Math.round(
-      currentEnvelopeHeatLoss + currentEnvelopeHeatGain + currentSolarHeatGain + infiltrationHeatLoss + infiltrationHeatGain
+      currentEnvelopeHeatLoss + currentEnvelopeHeatGain + currentSolarHeatGain + currentInfiltrationHeatLoss + currentInfiltrationHeatGain
     );
 
     const proposedBuildingEnergy = Math.round(
-      proposedEnvelopeHeatLoss + proposedEnvelopeHeatGain + proposedSolarHeatGain + infiltrationHeatLoss + infiltrationHeatGain
+      proposedEnvelopeHeatLoss + proposedEnvelopeHeatGain + proposedSolarHeatGain + proposedInfiltrationHeatLoss + proposedInfiltrationHeatGain
     );
 
     return {
       envelopeHeatGain: Math.round(envelopeHeatGain),
-      infiltrationHeatGain: Math.round(infiltrationHeatGain),
+      infiltrationHeatGain: Math.round(currentInfiltrationHeatGain),
       solarHeatGain: Math.round(solarHeatGain),
       envelopeHeatLoss: Math.round(envelopeHeatLoss),
-      infiltrationHeatLoss: Math.round(infiltrationHeatLoss),
+      infiltrationHeatLoss: Math.round(currentInfiltrationHeatLoss),
       totalGlazingArea: Math.round(totalGlazingArea),
       currentBuildingEnergy,
       proposedBuildingEnergy,

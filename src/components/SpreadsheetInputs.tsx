@@ -1,4 +1,3 @@
-
 import React, { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -67,6 +66,13 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
       climateData: { ...prev.climateData, [field]: value },
       // Update legacy fields
       [field]: value
+    }));
+  }, [setInputs]);
+
+  const updateAirflowRate = useCallback((value: number) => {
+    setInputs(prev => ({
+      ...prev,
+      airflowRate: value
     }));
   }, [setInputs]);
 
@@ -344,6 +350,23 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
 
   return (
     <div className="space-y-6">
+      {/* Airflow Rate Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-bold">Airflow Rate</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <InputField 
+            label="Airflow Rate" 
+            field="airflowRate" 
+            unit="CFM" 
+            step="1"
+            value={inputs.airflowRate}
+            onChange={updateAirflowRate}
+          />
+        </CardContent>
+      </Card>
+
       {/* Climate Data Section */}
       <Card>
         <CardHeader>
