@@ -141,7 +141,6 @@ const CSVImporter = ({ onDataImported }: Props) => {
         },
         heatingDegreeDays: data['Climate Data_Heating Degree Days (Th)'] || 0,
         coolingDegreeDays: data['Climate Data_Cooling Degree Days (Tc)'] || 0,
-        currentEnergyLoad: 0, // Will be calculated
         northGlazingArea: data['Current Building Glazing 1_North Area (Agn)'] || 0,
         southGlazingArea: data['Current Building Glazing 1_South Area (Ags)'] || 0,
         eastGlazingArea: data['Current Building Glazing 1_East Area (Age)'] || 0,
