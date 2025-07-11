@@ -46,34 +46,42 @@ export interface BuildingData {
   buildingElements: BuildingElement[];
 }
 
+export interface BuildingColumn {
+  id: string;
+  name: string;
+  building: BuildingData;
+}
+
 export interface CalculatorInputs {
   climateData: ClimateData;
   currentEnergyLoad: number;
+  buildingColumns: BuildingColumn[];
+  // Legacy fields for backward compatibility
   currentBuilding: BuildingData;
   proposedBuilding: BuildingData;
-  heatingDegreeDays: number; // Legacy field
-  coolingDegreeDays: number; // Legacy field
-  northGlazingArea: number; // Legacy field
-  southGlazingArea: number; // Legacy field
-  eastGlazingArea: number; // Legacy field
-  westGlazingArea: number; // Legacy field
-  northSolarRadiation: number; // Legacy field
-  southSolarRadiation: number; // Legacy field
-  eastSolarRadiation: number; // Legacy field
-  westSolarRadiation: number; // Legacy field
-  glazingPerimeter: number; // Legacy field
-  glazingRValue: number; // Legacy field
-  solarHeatGainCoeff: number; // Legacy field
-  soffitArea: number; // Legacy field
-  soffitRValue: number; // Legacy field
-  basementArea: number; // Legacy field
-  basementRValue: number; // Legacy field
-  roofArea: number; // Legacy field
-  roofRValue: number; // Legacy field
-  floorArea: number; // Legacy field
-  floorRValue: number; // Legacy field
-  opaqueWallArea: number; // Legacy field
-  opaqueWallRValue: number; // Legacy field
+  heatingDegreeDays: number;
+  coolingDegreeDays: number;
+  northGlazingArea: number;
+  southGlazingArea: number;
+  eastGlazingArea: number;
+  westGlazingArea: number;
+  northSolarRadiation: number;
+  southSolarRadiation: number;
+  eastSolarRadiation: number;
+  westSolarRadiation: number;
+  glazingPerimeter: number;
+  glazingRValue: number;
+  solarHeatGainCoeff: number;
+  soffitArea: number;
+  soffitRValue: number;
+  basementArea: number;
+  basementRValue: number;
+  roofArea: number;
+  roofRValue: number;
+  floorArea: number;
+  floorRValue: number;
+  opaqueWallArea: number;
+  opaqueWallRValue: number;
 }
 
 export interface CalculatorResults {
@@ -107,6 +115,63 @@ const HeatTransferCalculator = () => {
       westSolarRadiation: 400,
     },
     currentEnergyLoad: 50000000,
+    buildingColumns: [
+      {
+        id: 'current',
+        name: 'Current Building',
+        building: {
+          glazingElements: [
+            {
+              id: Date.now().toString(),
+              name: "Glazing 1",
+              northArea: 100,
+              southArea: 100,
+              eastArea: 50,
+              westArea: 50,
+              perimeter: 100,
+              uValue: 0.5,
+              shgc: 0.5,
+            },
+          ],
+          buildingElements: [
+            {
+              id: Date.now().toString(),
+              name: "Wall 1",
+              area: 400,
+              rValue: 15,
+            },
+          ],
+        }
+      },
+      {
+        id: 'proposed',
+        name: 'Proposed Building',
+        building: {
+          glazingElements: [
+            {
+              id: Date.now().toString(),
+              name: "Glazing 1",
+              northArea: 120,
+              southArea: 120,
+              eastArea: 60,
+              westArea: 60,
+              perimeter: 120,
+              uValue: 0.4,
+              shgc: 0.6,
+            },
+          ],
+          buildingElements: [
+            {
+              id: Date.now().toString(),
+              name: "Wall 1",
+              area: 450,
+              rValue: 20,
+            },
+          ],
+        }
+      }
+    ],
+    // Legacy fields
     currentBuilding: {
       glazingElements: [
         {
@@ -153,29 +218,29 @@ const HeatTransferCalculator = () => {
         },
       ],
     },
-    heatingDegreeDays: 5000, // Legacy field
-    coolingDegreeDays: 1000, // Legacy field
-    northGlazingArea: 100, // Legacy field
-    southGlazingArea: 100, // Legacy field
-    eastGlazingArea: 50, // Legacy field
-    westGlazingArea: 50, // Legacy field
-    northSolarRadiation: 300, // Legacy field
-    southSolarRadiation: 500, // Legacy field
-    eastSolarRadiation: 400, // Legacy field
-    westSolarRadiation: 400, // Legacy field
-    glazingPerimeter: 100, // Legacy field
-    glazingRValue: 2, // Legacy field
-    solarHeatGainCoeff: 0.5, // Legacy field
-    soffitArea: 100, // Legacy field
-    soffitRValue: 30, // Legacy field
-    basementArea: 500, // Legacy field
-    basementRValue: 10, // Legacy field
-    roofArea: 300, // Legacy field
-    roofRValue: 40, // Legacy field
-    floorArea: 400, // Legacy field
-    floorRValue: 12, // Legacy field
-    opaqueWallArea: 1000, // Legacy field
-    opaqueWallRValue: 15, // Legacy field
+    heatingDegreeDays: 5000,
+    coolingDegreeDays: 1000,
+    northGlazingArea: 100,
+    southGlazingArea: 100,
+    eastGlazingArea: 50,
+    westGlazingArea: 50,
+    northSolarRadiation: 300,
+    southSolarRadiation: 500,
+    eastSolarRadiation: 400,
+    westSolarRadiation: 400,
+    glazingPerimeter: 100,
+    glazingRValue: 2,
+    solarHeatGainCoeff: 0.5,
+    soffitArea: 100,
+    soffitRValue: 30,
+    basementArea: 500,
+    basementRValue: 10,
+    roofArea: 300,
+    roofRValue: 40,
+    floorArea: 400,
+    floorRValue: 12,
+    opaqueWallArea: 1000,
+    opaqueWallRValue: 15,
   });
 
   const [inputs, setInputs] = useState<CalculatorInputs>(() => {
@@ -248,6 +313,10 @@ const HeatTransferCalculator = () => {
   };
 
   const calculateResults = (inputs: CalculatorInputs): CalculatorResults => {
+    // Use legacy buildings for backward compatibility
+    const currentBuilding = inputs.buildingColumns.find(col => col.id === 'current')?.building || inputs.currentBuilding;
+    const proposedBuilding = inputs.buildingColumns.find(col => col.id === 'proposed')?.building || inputs.proposedBuilding;
+
     let envelopeHeatLoss = 0;
     let envelopeHeatGain = 0;
     let solarHeatGain = 0;
@@ -259,7 +328,7 @@ const HeatTransferCalculator = () => {
     let currentSolarHeatGain = 0;
 
     // Heat Loss through Building Elements
-    inputs.currentBuilding.buildingElements.forEach((element) => {
+    currentBuilding.buildingElements.forEach((element) => {
       currentEnvelopeHeatLoss += calculateHeatLoss(
         element.area,
         element.rValue,
@@ -268,7 +337,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Heat Gain through Building Elements
-    inputs.currentBuilding.buildingElements.forEach((element) => {
+    currentBuilding.buildingElements.forEach((element) => {
       currentEnvelopeHeatGain += calculateHeatGain(
         element.area,
         1 / element.rValue,
@@ -277,7 +346,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Glazing Calculations for Current Building
-    inputs.currentBuilding.glazingElements.forEach((glazing) => {
+    currentBuilding.glazingElements.forEach((glazing) => {
       const glazingArea =
         glazing.northArea +
         glazing.southArea +
@@ -325,7 +394,7 @@ const HeatTransferCalculator = () => {
     let proposedSolarHeatGain = 0;
 
     // Heat Loss through Building Elements
-    inputs.proposedBuilding.buildingElements.forEach((element) => {
+    proposedBuilding.buildingElements.forEach((element) => {
       proposedEnvelopeHeatLoss += calculateHeatLoss(
         element.area,
         element.rValue,
@@ -334,7 +403,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Heat Gain through Building Elements
-    inputs.proposedBuilding.buildingElements.forEach((element) => {
+    proposedBuilding.buildingElements.forEach((element) => {
       proposedEnvelopeHeatGain += calculateHeatGain(
         element.area,
         1 / element.rValue,
@@ -343,7 +412,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Glazing Calculations for Proposed Building
-    inputs.proposedBuilding.glazingElements.forEach((glazing) => {
+    proposedBuilding.glazingElements.forEach((glazing) => {
       const glazingArea =
         glazing.northArea +
         glazing.southArea +
@@ -374,6 +443,11 @@ const HeatTransferCalculator = () => {
         ) +
         calculateSolarHeatGain(
           glazing.eastArea,
+          glazing.shgc,
+          inputs.climateData.eastSolarRadiation
+        ) +
+        calculateSolarHeatGain(
+          glazing.westArea,
           glazing.shgc,
           inputs.climateData.westSolarRadiation
         );
