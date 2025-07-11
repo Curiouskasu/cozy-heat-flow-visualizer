@@ -1,3 +1,4 @@
+
 import React, { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -32,14 +33,14 @@ const InputField = ({
   disabled?: boolean;
 }) => (
   <div className="space-y-2">
-    <Label htmlFor={field}>{label} {unit && `(${unit})`}</Label>
+    <Label htmlFor={field} className="font-light">{label} {unit && `(${unit})`}</Label>
     <Input
       id={field}
       type="number"
       step={step}
       value={value}
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-      className="w-full"
+      className="w-full font-light"
       disabled={disabled}
     />
   </div>
@@ -346,7 +347,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
       {/* Climate Data Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Climate Data (Shared)</CardTitle>
+          <CardTitle className="font-bold">Climate Data (Shared)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <EPWFileHandler 
@@ -415,7 +416,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
       {/* Buildings Spreadsheet */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Buildings Comparison</CardTitle>
+          <CardTitle className="font-bold">Buildings Comparison</CardTitle>
           <Button
             onClick={addBuildingColumn}
             size="sm"
@@ -435,9 +436,9 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                     <Input
                       value={column.name}
                       onChange={(e) => updateColumnName(column.id, e.target.value)}
-                      className="font-semibold"
+                      className="font-bold"
                     />
-                    {inputs.buildingColumns.length > 2 && (
+                    {inputs.buildingColumns.length > 1 && (
                       <Button
                         onClick={() => removeBuildingColumn(column.id)}
                         size="sm"
@@ -457,7 +458,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                   {/* Glazing Elements */}
                   <div className="space-y-4 mb-6">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-medium">Glazing</h4>
+                      <h4 className="font-bold">Glazing</h4>
                       <Button
                         onClick={() => addGlazingElement(column.id)}
                         size="sm"
@@ -473,7 +474,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                           <Input
                             value={glazing.name}
                             onChange={(e) => updateGlazingElement(column.id, glazing.id, 'name', e.target.value)}
-                            className="text-sm"
+                            className="text-sm font-light"
                           />
                           {column.building.glazingElements.length > 1 && (
                             <Button
@@ -493,7 +494,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                   {/* Building Elements */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-medium">Building Elements</h4>
+                      <h4 className="font-bold">Building Elements</h4>
                       <Button
                         onClick={() => addBuildingElement(column.id)}
                         size="sm"
@@ -509,7 +510,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                           <Input
                             value={element.name}
                             onChange={(e) => updateBuildingElement(column.id, element.id, 'name', e.target.value)}
-                            className="text-sm"
+                            className="text-sm font-light"
                           />
                           {column.building.buildingElements.length > 1 && (
                             <Button

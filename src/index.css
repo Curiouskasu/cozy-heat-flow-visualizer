@@ -99,6 +99,6 @@
   }
 
   body {
-    @apply bg-background text-foreground font-whyte;
+    @apply bg-background text-foreground font-whyte font-light;
   }
 }

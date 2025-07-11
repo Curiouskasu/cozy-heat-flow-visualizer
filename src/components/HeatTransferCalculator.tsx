@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,8 +117,8 @@ const HeatTransferCalculator = () => {
     currentEnergyLoad: 50000000,
     buildingColumns: [
       {
-        id: 'current',
-        name: 'Current Building',
+        id: 'building1',
+        name: 'Building 1',
         building: {
           glazingElements: [
             {
@@ -140,33 +139,6 @@ const HeatTransferCalculator = () => {
               name: "Wall 1",
               area: 400,
               rValue: 15,
-            },
-          ],
-        }
-      },
-      {
-        id: 'proposed',
-        name: 'Proposed Building',
-        building: {
-          glazingElements: [
-            {
-              id: Date.now().toString(),
-              name: "Glazing 1",
-              northArea: 120,
-              southArea: 120,
-              eastArea: 60,
-              westArea: 60,
-              perimeter: 120,
-              uValue: 0.4,
-              shgc: 0.6,
-            },
-          ],
-          buildingElements: [
-            {
-              id: Date.now().toString(),
-              name: "Wall 1",
-              area: 450,
-              rValue: 20,
             },
           ],
         }
