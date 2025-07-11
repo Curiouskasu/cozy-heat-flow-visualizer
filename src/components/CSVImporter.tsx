@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Upload, Database } from 'lucide-react';
@@ -48,6 +47,58 @@ const CSVImporter = ({ onDataImported }: Props) => {
           westSolarRadiation: data['Climate Data_West Solar Radiation (Edw)'] || 0,
           isManualInput: true,
         },
+        currentEnergyLoad: 0,
+        buildingColumns: [
+          {
+            id: 'current',
+            name: 'Current Building',
+            building: {
+              glazingElements: [{
+                id: '1',
+                name: 'Current Glazing',
+                northArea: data['Current Building Glazing 1_North Area (Agn)'] || 0,
+                southArea: data['Current Building Glazing 1_South Area (Ags)'] || 0,
+                eastArea: data['Current Building Glazing 1_East Area (Age)'] || 0,
+                westArea: data['Current Building Glazing 1_West Area (Agw)'] || 0,
+                perimeter: data['Current Building Glazing 1_Perimeter (Lg)'] || 0,
+                uValue: data['Current Building Glazing 1_U-Value (Ug)'] || 0.3,
+                shgc: data['Current Building Glazing 1_SHGC'] || 0
+              }],
+              buildingElements: [
+                { id: '1', name: 'Soffit', area: data['Current Building Element 1_Area (A)'] || 0, rValue: data['Current Building Element 1_R-Value (R)'] || 0 },
+                { id: '2', name: 'Basement Walls', area: data['Current Building Element 2_Area (A)'] || 0, rValue: data['Current Building Element 2_R-Value (R)'] || 0 },
+                { id: '3', name: 'Roof', area: data['Current Building Element 3_Area (A)'] || 0, rValue: data['Current Building Element 3_R-Value (R)'] || 0 },
+                { id: '4', name: 'Floor', area: data['Current Building Element 4_Area (A)'] || 0, rValue: data['Current Building Element 4_R-Value (R)'] || 0 },
+                { id: '5', name: 'Opaque Walls', area: data['Current Building Element 5_Area (A)'] || 0, rValue: data['Current Building Element 5_R-Value (R)'] || 0 }
+              ]
+            }
+          },
+          {
+            id: 'proposed',
+            name: 'Proposed Building',
+            building: {
+              glazingElements: [{
+                id: '1',
+                name: 'Proposed Glazing',
+                northArea: data['Proposed Building Glazing 1_North Area (Agn)'] || 0,
+                southArea: data['Proposed Building Glazing 1_South Area (Ags)'] || 0,
+                eastArea: data['Proposed Building Glazing 1_East Area (Age)'] || 0,
+                westArea: data['Proposed Building Glazing 1_West Area (Agw)'] || 0,
+                perimeter: data['Proposed Building Glazing 1_Perimeter (Lg)'] || 0,
+                uValue: data['Proposed Building Glazing 1_U-Value (Ug)'] || 0.3,
+                shgc: data['Proposed Building Glazing 1_SHGC'] || 0
+              }],
+              buildingElements: [
+                { id: '1', name: 'Soffit', area: data['Proposed Building Element 1_Area (A)'] || 0, rValue: data['Proposed Building Element 1_R-Value (R)'] || 0 },
+                { id: '2', name: 'Basement Walls', area: data['Proposed Building Element 2_Area (A)'] || 0, rValue: data['Proposed Building Element 2_R-Value (R)'] || 0 },
+                { id: '3', name: 'Roof', area: data['Proposed Building Element 3_Area (A)'] || 0, rValue: data['Proposed Building Element 3_R-Value (R)'] || 0 },
+                { id: '4', name: 'Floor', area: data['Proposed Building Element 4_Area (A)'] || 0, rValue: data['Proposed Building Element 4_R-Value (R)'] || 0 },
+                { id: '5', name: 'Opaque Walls', area: data['Proposed Building Element 5_Area (A)'] || 0, rValue: data['Proposed Building Element 5_R-Value (R)'] || 0 }
+              ]
+            }
+          }
+        ],
+        // Legacy fields for backward compatibility
         currentBuilding: {
           glazingElements: [{
             id: '1',
@@ -88,7 +139,6 @@ const CSVImporter = ({ onDataImported }: Props) => {
             { id: '5', name: 'Opaque Walls', area: data['Proposed Building Element 5_Area (A)'] || 0, rValue: data['Proposed Building Element 5_R-Value (R)'] || 0 }
           ]
         },
-        // Legacy fields for backward compatibility
         heatingDegreeDays: data['Climate Data_Heating Degree Days (Th)'] || 0,
         coolingDegreeDays: data['Climate Data_Cooling Degree Days (Tc)'] || 0,
         currentEnergyLoad: 0, // Will be calculated
