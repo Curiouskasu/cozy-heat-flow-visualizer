@@ -222,8 +222,9 @@ const HeatTransferCalculator = () => {
     if (saved) {
       try {
         const parsedInputs = JSON.parse(saved);
-        // Ensure buildingColumns exists, if not create from legacy data
-        if (!parsedInputs.buildingColumns) {
+        // Ensure buildingColumns exists and is an array
+        if (!parsedInputs.buildingColumns || !Array.isArray(parsedInputs.buildingColumns)) {
+          console.log('buildingColumns missing or invalid, creating from legacy data');
           parsedInputs.buildingColumns = [
             {
               id: 'current',
@@ -243,6 +244,16 @@ const HeatTransferCalculator = () => {
             }
           ];
         }
+        
+        // Ensure each building column has proper structure
+        parsedInputs.buildingColumns = parsedInputs.buildingColumns.map((col: any) => ({
+          ...col,
+          building: {
+            glazingElements: Array.isArray(col.building?.glazingElements) ? col.building.glazingElements : [],
+            buildingElements: Array.isArray(col.building?.buildingElements) ? col.building.buildingElements : []
+          }
+        }));
+        
         return parsedInputs;
       } catch (e) {
         console.error('Failed to parse saved inputs:', e);
@@ -308,13 +319,13 @@ const HeatTransferCalculator = () => {
 
   const calculateResults = (inputs: CalculatorInputs): CalculatorResults => {
     // Ensure buildingColumns exists and has the required columns
-    const buildingColumns = inputs.buildingColumns || [];
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     
     // Use buildingColumns if available, otherwise fall back to legacy buildings
     const currentBuilding = buildingColumns.find(col => col.id === 'current')?.building || inputs.currentBuilding;
     const proposedBuilding = buildingColumns.find(col => col.id === 'proposed')?.building || inputs.proposedBuilding;
 
-    // Ensure we have valid building data
+    // Ensure we have valid building data with proper array initialization
     if (!currentBuilding || !proposedBuilding) {
       console.error('Missing building data for calculations');
       return {
@@ -340,8 +351,9 @@ const HeatTransferCalculator = () => {
     let currentSolarHeatGain = 0;
     let currentTotalPerimeter = 0;
 
-    // Heat Loss through Building Elements
-    (currentBuilding.buildingElements || []).forEach((element) => {
+    // Heat Loss through Building Elements - ensure array exists
+    const currentBuildingElements = Array.isArray(currentBuilding.buildingElements) ? currentBuilding.buildingElements : [];
+    currentBuildingElements.forEach((element) => {
       currentEnvelopeHeatLoss += calculateHeatLoss(
         element.area,
         element.rValue,
@@ -350,7 +362,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Heat Gain through Building Elements
-    (currentBuilding.buildingElements || []).forEach((element) => {
+    currentBuildingElements.forEach((element) => {
       currentEnvelopeHeatGain += calculateHeatGain(
         element.area,
         1 / element.rValue,
@@ -358,8 +370,9 @@ const HeatTransferCalculator = () => {
       );
     });
 
-    // Glazing Calculations for Current Building
-    (currentBuilding.glazingElements || []).forEach((glazing) => {
+    // Glazing Calculations for Current Building - ensure array exists
+    const currentGlazingElements = Array.isArray(currentBuilding.glazingElements) ? currentBuilding.glazingElements : [];
+    currentGlazingElements.forEach((glazing) => {
       const glazingArea =
         glazing.northArea +
         glazing.southArea +
@@ -408,8 +421,9 @@ const HeatTransferCalculator = () => {
     let proposedSolarHeatGain = 0;
     let proposedTotalPerimeter = 0;
 
-    // Heat Loss through Building Elements
-    (proposedBuilding.buildingElements || []).forEach((element) => {
+    // Heat Loss through Building Elements - ensure array exists
+    const proposedBuildingElements = Array.isArray(proposedBuilding.buildingElements) ? proposedBuilding.buildingElements : [];
+    proposedBuildingElements.forEach((element) => {
       proposedEnvelopeHeatLoss += calculateHeatLoss(
         element.area,
         element.rValue,
@@ -418,7 +432,7 @@ const HeatTransferCalculator = () => {
     });
 
     // Heat Gain through Building Elements
-    (proposedBuilding.buildingElements || []).forEach((element) => {
+    proposedBuildingElements.forEach((element) => {
       proposedEnvelopeHeatGain += calculateHeatGain(
         element.area,
         1 / element.rValue,
@@ -426,8 +440,9 @@ const HeatTransferCalculator = () => {
       );
     });
 
-    // Glazing Calculations for Proposed Building
-    (proposedBuilding.glazingElements || []).forEach((glazing) => {
+    // Glazing Calculations for Proposed Building - ensure array exists
+    const proposedGlazingElements = Array.isArray(proposedBuilding.glazingElements) ? proposedBuilding.glazingElements : [];
+    proposedGlazingElements.forEach((glazing) => {
       const glazingArea =
         glazing.northArea +
         glazing.southArea +

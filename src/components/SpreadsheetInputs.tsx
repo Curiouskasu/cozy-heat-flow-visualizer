@@ -1,4 +1,3 @@
-
 import React, { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -77,9 +76,11 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
   }, [setInputs]);
 
   const addBuildingColumn = useCallback(() => {
+    // Ensure buildingColumns is an array before accessing length
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     const newColumn: BuildingColumn = {
       id: Date.now().toString(),
-      name: `Building ${inputs.buildingColumns.length + 1}`,
+      name: `Building ${buildingColumns.length + 1}`,
       building: {
         glazingElements: [
           {
@@ -107,79 +108,88 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
 
     setInputs(prev => ({
       ...prev,
-      buildingColumns: [...prev.buildingColumns, newColumn]
+      buildingColumns: [...buildingColumns, newColumn]
     }));
-  }, [inputs.buildingColumns.length, setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const duplicateBuildingColumn = useCallback((sourceColumnId: string) => {
-    const sourceColumn = inputs.buildingColumns.find(col => col.id === sourceColumnId);
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
+    const sourceColumn = buildingColumns.find(col => col.id === sourceColumnId);
     if (!sourceColumn) return;
 
     const newColumn: BuildingColumn = {
       id: Date.now().toString(),
       name: `${sourceColumn.name} Copy`,
       building: {
-        glazingElements: sourceColumn.building.glazingElements.map(glazing => ({
-          ...glazing,
-          id: (Date.now() + Math.random()).toString(),
-          name: glazing.name
-        })),
-        buildingElements: sourceColumn.building.buildingElements.map(element => ({
-          ...element,
-          id: (Date.now() + Math.random()).toString(),
-          name: element.name
-        }))
+        glazingElements: Array.isArray(sourceColumn.building.glazingElements) 
+          ? sourceColumn.building.glazingElements.map(glazing => ({
+              ...glazing,
+              id: (Date.now() + Math.random()).toString(),
+              name: glazing.name
+            }))
+          : [],
+        buildingElements: Array.isArray(sourceColumn.building.buildingElements)
+          ? sourceColumn.building.buildingElements.map(element => ({
+              ...element,
+              id: (Date.now() + Math.random()).toString(),
+              name: element.name
+            }))
+          : []
       }
     };
 
     setInputs(prev => ({
       ...prev,
-      buildingColumns: [...prev.buildingColumns, newColumn]
+      buildingColumns: [...buildingColumns, newColumn]
     }));
   }, [inputs.buildingColumns, setInputs]);
 
   const removeBuildingColumn = useCallback((columnId: string) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.filter(col => col.id !== columnId)
+      buildingColumns: buildingColumns.filter(col => col.id !== columnId)
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const updateColumnName = useCallback((columnId: string, name: string) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.map(col =>
+      buildingColumns: buildingColumns.map(col =>
         col.id === columnId ? { ...col, name } : col
       )
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const updateColumnBuilding = useCallback((columnId: string, building: any) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.map(col =>
+      buildingColumns: buildingColumns.map(col =>
         col.id === columnId ? { ...col, building } : col
       ),
       // Update legacy fields if updating current or proposed
       ...(columnId === 'current' ? { currentBuilding: building } : {}),
       ...(columnId === 'proposed' ? { proposedBuilding: building } : {})
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const addGlazingElement = useCallback((columnId: string) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.map(col =>
+      buildingColumns: buildingColumns.map(col =>
         col.id === columnId
           ? {
               ...col,
               building: {
                 ...col.building,
                 glazingElements: [
-                  ...col.building.glazingElements,
+                  ...(Array.isArray(col.building.glazingElements) ? col.building.glazingElements : []),
                   {
                     id: Date.now().toString(),
-                    name: `Glazing ${col.building.glazingElements.length + 1}`,
+                    name: `Glazing ${(Array.isArray(col.building.glazingElements) ? col.building.glazingElements.length : 0) + 1}`,
                     northArea: 0,
                     southArea: 0,
                     eastArea: 0,
@@ -194,58 +204,65 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
           : col
       )
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const removeGlazingElement = useCallback((columnId: string, elementId: string) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.map(col =>
+      buildingColumns: buildingColumns.map(col =>
         col.id === columnId
           ? {
               ...col,
               building: {
                 ...col.building,
-                glazingElements: col.building.glazingElements.filter(el => el.id !== elementId)
+                glazingElements: Array.isArray(col.building.glazingElements) 
+                  ? col.building.glazingElements.filter(el => el.id !== elementId)
+                  : []
               }
             }
           : col
       )
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const updateGlazingElement = useCallback((columnId: string, elementId: string, field: keyof GlazingElement, value: any) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.map(col =>
+      buildingColumns: buildingColumns.map(col =>
         col.id === columnId
           ? {
               ...col,
               building: {
                 ...col.building,
-                glazingElements: col.building.glazingElements.map(el =>
-                  el.id === elementId ? { ...el, [field]: value } : el
-                )
+                glazingElements: Array.isArray(col.building.glazingElements)
+                  ? col.building.glazingElements.map(el =>
+                      el.id === elementId ? { ...el, [field]: value } : el
+                    )
+                  : []
               }
             }
           : col
       )
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const addBuildingElement = useCallback((columnId: string) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.map(col =>
+      buildingColumns: buildingColumns.map(col =>
         col.id === columnId
           ? {
               ...col,
               building: {
                 ...col.building,
                 buildingElements: [
-                  ...col.building.buildingElements,
+                  ...(Array.isArray(col.building.buildingElements) ? col.building.buildingElements : []),
                   {
                     id: Date.now().toString(),
-                    name: `Element ${col.building.buildingElements.length + 1}`,
+                    name: `Element ${(Array.isArray(col.building.buildingElements) ? col.building.buildingElements.length : 0) + 1}`,
                     area: 0,
                     rValue: 10
                   }
@@ -255,43 +272,49 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
           : col
       )
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const removeBuildingElement = useCallback((columnId: string, elementId: string) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.map(col =>
+      buildingColumns: buildingColumns.map(col =>
         col.id === columnId
           ? {
               ...col,
               building: {
                 ...col.building,
-                buildingElements: col.building.buildingElements.filter(el => el.id !== elementId)
+                buildingElements: Array.isArray(col.building.buildingElements)
+                  ? col.building.buildingElements.filter(el => el.id !== elementId)
+                  : []
               }
             }
           : col
       )
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const updateBuildingElement = useCallback((columnId: string, elementId: string, field: keyof BuildingElement, value: any) => {
+    const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.map(col =>
+      buildingColumns: buildingColumns.map(col =>
         col.id === columnId
           ? {
               ...col,
               building: {
                 ...col.building,
-                buildingElements: col.building.buildingElements.map(el =>
-                  el.id === elementId ? { ...el, [field]: value } : el
-                )
+                buildingElements: Array.isArray(col.building.buildingElements)
+                  ? col.building.buildingElements.map(el =>
+                      el.id === elementId ? { ...el, [field]: value } : el
+                    )
+                  : []
               }
             }
           : col
       )
     }));
-  }, [setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const renderGlazingFields = (glazing: GlazingElement, columnId: string) => (
     <>
@@ -370,6 +393,9 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
       />
     </div>
   );
+
+  // Ensure buildingColumns is an array before rendering
+  const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
 
   return (
     <div className="space-y-6">
@@ -470,7 +496,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
         <CardContent>
           <div className="overflow-x-auto">
             <div className="flex gap-4 min-w-max">
-              {inputs.buildingColumns.map((column) => (
+              {buildingColumns.map((column) => (
                 <div key={column.id} className="flex-shrink-0 w-80 border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <Input
@@ -487,7 +513,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
-                      {inputs.buildingColumns.length > 1 && (
+                      {buildingColumns.length > 1 && (
                         <Button
                           onClick={() => removeBuildingColumn(column.id)}
                           size="sm"
@@ -513,7 +539,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                       </Button>
                     </div>
                     
-                    {column.building.glazingElements.map((glazing) => (
+                    {(Array.isArray(column.building.glazingElements) ? column.building.glazingElements : []).map((glazing) => (
                       <div key={glazing.id} className="border rounded p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <Input
@@ -521,7 +547,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                             onChange={(e) => updateGlazingElement(column.id, glazing.id, 'name', e.target.value)}
                             className="text-sm font-light"
                           />
-                          {column.building.glazingElements.length > 1 && (
+                          {(Array.isArray(column.building.glazingElements) ? column.building.glazingElements : []).length > 1 && (
                             <Button
                               onClick={() => removeGlazingElement(column.id, glazing.id)}
                               size="sm"
@@ -549,7 +575,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                       </Button>
                     </div>
                     
-                    {column.building.buildingElements.map((element) => (
+                    {(Array.isArray(column.building.buildingElements) ? column.building.buildingElements : []).map((element) => (
                       <div key={element.id} className="border rounded p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <Input
@@ -557,7 +583,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                             onChange={(e) => updateBuildingElement(column.id, element.id, 'name', e.target.value)}
                             className="text-sm font-light"
                           />
-                          {column.building.buildingElements.length > 1 && (
+                          {(Array.isArray(column.building.buildingElements) ? column.building.buildingElements : []).length > 1 && (
                             <Button
                               onClick={() => removeBuildingElement(column.id, element.id)}
                               size="sm"
