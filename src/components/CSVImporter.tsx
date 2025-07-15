@@ -17,6 +17,7 @@ const CSVImporter = ({ onDataImported }: Props) => {
     try {
       const lines = csvContent.split('\n').filter(line => line.trim());
       const data: any = {};
+      const buildingData: any = {};
       
       // Parse CSV data into key-value pairs
       lines.forEach(line => {
@@ -30,11 +31,65 @@ const CSVImporter = ({ onDataImported }: Props) => {
             const key = `${category}_${parameter}`;
             const numValue = parseFloat(value);
             data[key] = isNaN(numValue) ? value : numValue;
+            
+            // Track building categories for dynamic building creation
+            if (category.includes('Building') && !category.includes('Climate') && !category.includes('Airflow')) {
+              if (!buildingData[category]) {
+                buildingData[category] = {};
+              }
+              buildingData[category][parameter] = isNaN(numValue) ? value : numValue;
+            }
           }
         }
       });
 
       console.log('Parsed CSV data:', data);
+      console.log('Building data:', buildingData);
+
+      // Create dynamic building columns from CSV data
+      const buildingColumns = Object.keys(buildingData).map((buildingName, index) => {
+        const building = buildingData[buildingName];
+        
+        // Create glazing elements
+        const glazingElements = [];
+        let glazingIndex = 1;
+        while (building[`Glazing ${glazingIndex}_North Area (Agn)`] !== undefined) {
+          glazingElements.push({
+            id: `glazing-${index}-${glazingIndex}`,
+            name: `Glazing ${glazingIndex}`,
+            northArea: building[`Glazing ${glazingIndex}_North Area (Agn)`] || 0,
+            southArea: building[`Glazing ${glazingIndex}_South Area (Ags)`] || 0,
+            eastArea: building[`Glazing ${glazingIndex}_East Area (Age)`] || 0,
+            westArea: building[`Glazing ${glazingIndex}_West Area (Agw)`] || 0,
+            perimeter: building[`Glazing ${glazingIndex}_Perimeter (Lg)`] || 0,
+            uValue: building[`Glazing ${glazingIndex}_U-Value (Ug)`] || 0.3,
+            shgc: building[`Glazing ${glazingIndex}_SHGC`] || 0
+          });
+          glazingIndex++;
+        }
+
+        // Create building elements
+        const buildingElements = [];
+        let elementIndex = 1;
+        while (building[`Element ${elementIndex}_Area (A)`] !== undefined) {
+          buildingElements.push({
+            id: `element-${index}-${elementIndex}`,
+            name: building[`Element ${elementIndex}_Name`] || `Element ${elementIndex}`,
+            area: building[`Element ${elementIndex}_Area (A)`] || 0,
+            rValue: building[`Element ${elementIndex}_R-Value (R)`] || 0
+          });
+          elementIndex++;
+        }
+
+        return {
+          id: `building-${index}`,
+          name: buildingName.replace(' Building', '').replace('Building ', ''),
+          building: {
+            glazingElements,
+            buildingElements
+          }
+        };
+      });
 
       // Map CSV data to CalculatorInputs structure
       const calculatorInputs: CalculatorInputs = {
@@ -49,120 +104,39 @@ const CSVImporter = ({ onDataImported }: Props) => {
         },
         currentEnergyLoad: 0,
         airflowRate: data['Airflow Rate'] || 0.01,
-        buildingColumns: [
-          {
-            id: 'current',
-            name: 'Current Building',
-            building: {
-              glazingElements: [{
-                id: '1',
-                name: 'Current Glazing',
-                northArea: data['Current Building Glazing 1_North Area (Agn)'] || 0,
-                southArea: data['Current Building Glazing 1_South Area (Ags)'] || 0,
-                eastArea: data['Current Building Glazing 1_East Area (Age)'] || 0,
-                westArea: data['Current Building Glazing 1_West Area (Agw)'] || 0,
-                perimeter: data['Current Building Glazing 1_Perimeter (Lg)'] || 0,
-                uValue: data['Current Building Glazing 1_U-Value (Ug)'] || 0.3,
-                shgc: data['Current Building Glazing 1_SHGC'] || 0
-              }],
-              buildingElements: [
-                { id: '1', name: 'Soffit', area: data['Current Building Element 1_Area (A)'] || 0, rValue: data['Current Building Element 1_R-Value (R)'] || 0 },
-                { id: '2', name: 'Basement Walls', area: data['Current Building Element 2_Area (A)'] || 0, rValue: data['Current Building Element 2_R-Value (R)'] || 0 },
-                { id: '3', name: 'Roof', area: data['Current Building Element 3_Area (A)'] || 0, rValue: data['Current Building Element 3_R-Value (R)'] || 0 },
-                { id: '4', name: 'Floor', area: data['Current Building Element 4_Area (A)'] || 0, rValue: data['Current Building Element 4_R-Value (R)'] || 0 },
-                { id: '5', name: 'Opaque Walls', area: data['Current Building Element 5_Area (A)'] || 0, rValue: data['Current Building Element 5_R-Value (R)'] || 0 }
-              ]
-            }
-          },
-          {
-            id: 'proposed',
-            name: 'Proposed Building',
-            building: {
-              glazingElements: [{
-                id: '1',
-                name: 'Proposed Glazing',
-                northArea: data['Proposed Building Glazing 1_North Area (Agn)'] || 0,
-                southArea: data['Proposed Building Glazing 1_South Area (Ags)'] || 0,
-                eastArea: data['Proposed Building Glazing 1_East Area (Age)'] || 0,
-                westArea: data['Proposed Building Glazing 1_West Area (Agw)'] || 0,
-                perimeter: data['Proposed Building Glazing 1_Perimeter (Lg)'] || 0,
-                uValue: data['Proposed Building Glazing 1_U-Value (Ug)'] || 0.3,
-                shgc: data['Proposed Building Glazing 1_SHGC'] || 0
-              }],
-              buildingElements: [
-                { id: '1', name: 'Soffit', area: data['Proposed Building Element 1_Area (A)'] || 0, rValue: data['Proposed Building Element 1_R-Value (R)'] || 0 },
-                { id: '2', name: 'Basement Walls', area: data['Proposed Building Element 2_Area (A)'] || 0, rValue: data['Proposed Building Element 2_R-Value (R)'] || 0 },
-                { id: '3', name: 'Roof', area: data['Proposed Building Element 3_Area (A)'] || 0, rValue: data['Proposed Building Element 3_R-Value (R)'] || 0 },
-                { id: '4', name: 'Floor', area: data['Proposed Building Element 4_Area (A)'] || 0, rValue: data['Proposed Building Element 4_R-Value (R)'] || 0 },
-                { id: '5', name: 'Opaque Walls', area: data['Proposed Building Element 5_Area (A)'] || 0, rValue: data['Proposed Building Element 5_R-Value (R)'] || 0 }
-              ]
-            }
-          }
-        ],
-        // Legacy fields for backward compatibility
-        currentBuilding: {
-          glazingElements: [{
-            id: '1',
-            name: 'Current Glazing',
-            northArea: data['Current Building Glazing 1_North Area (Agn)'] || 0,
-            southArea: data['Current Building Glazing 1_South Area (Ags)'] || 0,
-            eastArea: data['Current Building Glazing 1_East Area (Age)'] || 0,
-            westArea: data['Current Building Glazing 1_West Area (Agw)'] || 0,
-            perimeter: data['Current Building Glazing 1_Perimeter (Lg)'] || 0,
-            uValue: data['Current Building Glazing 1_U-Value (Ug)'] || 0.3,
-            shgc: data['Current Building Glazing 1_SHGC'] || 0
-          }],
-          buildingElements: [
-            { id: '1', name: 'Soffit', area: data['Current Building Element 1_Area (A)'] || 0, rValue: data['Current Building Element 1_R-Value (R)'] || 0 },
-            { id: '2', name: 'Basement Walls', area: data['Current Building Element 2_Area (A)'] || 0, rValue: data['Current Building Element 2_R-Value (R)'] || 0 },
-            { id: '3', name: 'Roof', area: data['Current Building Element 3_Area (A)'] || 0, rValue: data['Current Building Element 3_R-Value (R)'] || 0 },
-            { id: '4', name: 'Floor', area: data['Current Building Element 4_Area (A)'] || 0, rValue: data['Current Building Element 4_R-Value (R)'] || 0 },
-            { id: '5', name: 'Opaque Walls', area: data['Current Building Element 5_Area (A)'] || 0, rValue: data['Current Building Element 5_R-Value (R)'] || 0 }
-          ]
+        buildingColumns,
+        // Legacy fields for backward compatibility - use first building if available
+        currentBuilding: buildingColumns[0]?.building || {
+          glazingElements: [],
+          buildingElements: []
         },
-        proposedBuilding: {
-          glazingElements: [{
-            id: '1',
-            name: 'Proposed Glazing',
-            northArea: data['Proposed Building Glazing 1_North Area (Agn)'] || 0,
-            southArea: data['Proposed Building Glazing 1_South Area (Ags)'] || 0,
-            eastArea: data['Proposed Building Glazing 1_East Area (Age)'] || 0,
-            westArea: data['Proposed Building Glazing 1_West Area (Agw)'] || 0,
-            perimeter: data['Proposed Building Glazing 1_Perimeter (Lg)'] || 0,
-            uValue: data['Proposed Building Glazing 1_U-Value (Ug)'] || 0.3,
-            shgc: data['Proposed Building Glazing 1_SHGC'] || 0
-          }],
-          buildingElements: [
-            { id: '1', name: 'Soffit', area: data['Proposed Building Element 1_Area (A)'] || 0, rValue: data['Proposed Building Element 1_R-Value (R)'] || 0 },
-            { id: '2', name: 'Basement Walls', area: data['Proposed Building Element 2_Area (A)'] || 0, rValue: data['Proposed Building Element 2_R-Value (R)'] || 0 },
-            { id: '3', name: 'Roof', area: data['Proposed Building Element 3_Area (A)'] || 0, rValue: data['Proposed Building Element 3_R-Value (R)'] || 0 },
-            { id: '4', name: 'Floor', area: data['Proposed Building Element 4_Area (A)'] || 0, rValue: data['Proposed Building Element 4_R-Value (R)'] || 0 },
-            { id: '5', name: 'Opaque Walls', area: data['Proposed Building Element 5_Area (A)'] || 0, rValue: data['Proposed Building Element 5_R-Value (R)'] || 0 }
-          ]
+        proposedBuilding: buildingColumns[1]?.building || {
+          glazingElements: [],
+          buildingElements: []
         },
         heatingDegreeDays: data['Climate Data_Heating Degree Days (Th)'] || 0,
         coolingDegreeDays: data['Climate Data_Cooling Degree Days (Tc)'] || 0,
-        northGlazingArea: data['Current Building Glazing 1_North Area (Agn)'] || 0,
-        southGlazingArea: data['Current Building Glazing 1_South Area (Ags)'] || 0,
-        eastGlazingArea: data['Current Building Glazing 1_East Area (Age)'] || 0,
-        westGlazingArea: data['Current Building Glazing 1_West Area (Agw)'] || 0,
+        northGlazingArea: buildingColumns[0]?.building?.glazingElements[0]?.northArea || 0,
+        southGlazingArea: buildingColumns[0]?.building?.glazingElements[0]?.southArea || 0,
+        eastGlazingArea: buildingColumns[0]?.building?.glazingElements[0]?.eastArea || 0,
+        westGlazingArea: buildingColumns[0]?.building?.glazingElements[0]?.westArea || 0,
         northSolarRadiation: data['Climate Data_North Solar Radiation (Edn)'] || 0,
         southSolarRadiation: data['Climate Data_South Solar Radiation (Eds)'] || 0,
         eastSolarRadiation: data['Climate Data_East Solar Radiation (Ede)'] || 0,
         westSolarRadiation: data['Climate Data_West Solar Radiation (Edw)'] || 0,
-        glazingPerimeter: data['Current Building Glazing 1_Perimeter (Lg)'] || 0,
-        glazingRValue: data['Current Building Glazing 1_U-Value (Ug)'] ? 1 / data['Current Building Glazing 1_U-Value (Ug)'] : 3.0,
-        solarHeatGainCoeff: data['Current Building Glazing 1_SHGC'] || 0,
-        soffitArea: data['Current Building Element 1_Area (A)'] || 0,
-        soffitRValue: data['Current Building Element 1_R-Value (R)'] || 0,
-        basementArea: data['Current Building Element 2_Area (A)'] || 0,
-        basementRValue: data['Current Building Element 2_R-Value (R)'] || 0,
-        roofArea: data['Current Building Element 3_Area (A)'] || 0,
-        roofRValue: data['Current Building Element 3_R-Value (R)'] || 0,
-        floorArea: data['Current Building Element 4_Area (A)'] || 0,
-        floorRValue: data['Current Building Element 4_R-Value (R)'] || 0,
-        opaqueWallArea: data['Current Building Element 5_Area (A)'] || 0,
-        opaqueWallRValue: data['Current Building Element 5_R-Value (R)'] || 0,
+        glazingPerimeter: buildingColumns[0]?.building?.glazingElements[0]?.perimeter || 0,
+        glazingRValue: buildingColumns[0]?.building?.glazingElements[0]?.uValue ? 1 / buildingColumns[0].building.glazingElements[0].uValue : 3.0,
+        solarHeatGainCoeff: buildingColumns[0]?.building?.glazingElements[0]?.shgc || 0,
+        soffitArea: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('soffit'))?.area || 0,
+        soffitRValue: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('soffit'))?.rValue || 0,
+        basementArea: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('basement'))?.area || 0,
+        basementRValue: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('basement'))?.rValue || 0,
+        roofArea: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('roof'))?.area || 0,
+        roofRValue: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('roof'))?.rValue || 0,
+        floorArea: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('floor'))?.area || 0,
+        floorRValue: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('floor'))?.rValue || 0,
+        opaqueWallArea: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('wall'))?.area || 0,
+        opaqueWallRValue: buildingColumns[0]?.building?.buildingElements.find(e => e.name.toLowerCase().includes('wall'))?.rValue || 0,
       };
 
       return calculatorInputs;
@@ -196,7 +170,7 @@ const CSVImporter = ({ onDataImported }: Props) => {
   const handleFillInputs = () => {
     if (csvData) {
       onDataImported(csvData);
-      alert('CSV data imported successfully!');
+      alert('CSV data imported successfully! All building data has been populated.');
       setCsvData(null);
       setFileName('');
     }
@@ -235,12 +209,12 @@ const CSVImporter = ({ onDataImported }: Props) => {
                 disabled={!csvData}
               >
                 <Database className="h-4 w-4" />
-                Fill Inputs
+                Fill All Inputs
               </Button>
             </div>
           )}
           <span className="text-sm text-muted-foreground">
-            Import a CSV file in the same format as the exported data
+            Import a CSV file to populate all fields including building comparisons
           </span>
         </div>
       </CardContent>
