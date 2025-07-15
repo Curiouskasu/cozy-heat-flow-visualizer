@@ -99,8 +99,6 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Whyte', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-weight: 300;
+    @apply bg-background text-foreground font-whyte font-light;
   }
 }

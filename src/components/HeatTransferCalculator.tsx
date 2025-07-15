@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -147,6 +146,7 @@ const HeatTransferCalculator = () => {
         }
       }
     ],
+    // Legacy fields
     currentBuilding: {
       glazingElements: [
         {
@@ -223,11 +223,8 @@ const HeatTransferCalculator = () => {
     if (saved) {
       try {
         const parsedInputs = JSON.parse(saved);
-        console.log('Loaded inputs from localStorage:', parsedInputs);
-        
-        // Ensure buildingColumns exists and is an array
-        if (!parsedInputs.buildingColumns || !Array.isArray(parsedInputs.buildingColumns)) {
-          console.log('buildingColumns missing or not array, creating from legacy data');
+        // Ensure buildingColumns exists, if not create from legacy data
+        if (!parsedInputs.buildingColumns) {
           parsedInputs.buildingColumns = [
             {
               id: 'current',
@@ -247,16 +244,6 @@ const HeatTransferCalculator = () => {
             }
           ];
         }
-        
-        // Ensure each building column has the required structure
-        parsedInputs.buildingColumns = parsedInputs.buildingColumns.map((col: any) => ({
-          ...col,
-          building: {
-            glazingElements: col.building?.glazingElements || [],
-            buildingElements: col.building?.buildingElements || []
-          }
-        }));
-        
         return parsedInputs;
       } catch (e) {
         console.error('Failed to parse saved inputs:', e);
@@ -321,11 +308,8 @@ const HeatTransferCalculator = () => {
   };
 
   const calculateResults = (inputs: CalculatorInputs): CalculatorResults => {
-    console.log('Calculating results with inputs:', inputs);
-    
     // Ensure buildingColumns exists and has the required columns
     const buildingColumns = inputs.buildingColumns || [];
-    console.log('Building columns:', buildingColumns);
     
     // Use buildingColumns if available, otherwise fall back to legacy buildings
     const currentBuilding = buildingColumns.find(col => col.id === 'current')?.building || inputs.currentBuilding;
@@ -569,7 +553,7 @@ const HeatTransferCalculator = () => {
 
   const handleCSVImport = (importedInputs: CalculatorInputs) => {
     setInputs(prev => ({ ...prev, ...importedInputs }));
-    toast("CSV data imported successfully - you can now edit the values before running the simulation");
+    toast("CSV data imported successfully");
   };
 
   return (
