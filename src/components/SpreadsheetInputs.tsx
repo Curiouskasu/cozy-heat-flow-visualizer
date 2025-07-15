@@ -1,13 +1,13 @@
+
 import React, { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Upload } from "lucide-react";
+import { Plus, X, Copy } from "lucide-react";
 import { CalculatorInputs, GlazingElement, BuildingElement, ClimateData, BuildingColumn } from "./HeatTransferCalculator";
 import EPWFileHandler from "./EPWFileHandler";
 import DragDropList from "./DragDropList";
-import CSVColumnImporter from "./CSVColumnImporter";
 
 interface Props {
   inputs: CalculatorInputs;
@@ -111,6 +111,33 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
     }));
   }, [inputs.buildingColumns.length, setInputs]);
 
+  const duplicateBuildingColumn = useCallback((sourceColumnId: string) => {
+    const sourceColumn = inputs.buildingColumns.find(col => col.id === sourceColumnId);
+    if (!sourceColumn) return;
+
+    const newColumn: BuildingColumn = {
+      id: Date.now().toString(),
+      name: `${sourceColumn.name} Copy`,
+      building: {
+        glazingElements: sourceColumn.building.glazingElements.map(glazing => ({
+          ...glazing,
+          id: (Date.now() + Math.random()).toString(),
+          name: glazing.name
+        })),
+        buildingElements: sourceColumn.building.buildingElements.map(element => ({
+          ...element,
+          id: (Date.now() + Math.random()).toString(),
+          name: element.name
+        }))
+      }
+    };
+
+    setInputs(prev => ({
+      ...prev,
+      buildingColumns: [...prev.buildingColumns, newColumn]
+    }));
+  }, [inputs.buildingColumns, setInputs]);
+
   const removeBuildingColumn = useCallback((columnId: string) => {
     setInputs(prev => ({
       ...prev,
@@ -138,10 +165,6 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
       ...(columnId === 'proposed' ? { proposedBuilding: building } : {})
     }));
   }, [setInputs]);
-
-  const handleCSVImportForColumn = useCallback((columnId: string, buildingData: any) => {
-    updateColumnBuilding(columnId, buildingData);
-  }, [updateColumnBuilding]);
 
   const addGlazingElement = useCallback((columnId: string) => {
     setInputs(prev => ({
@@ -350,29 +373,23 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
 
   return (
     <div className="space-y-6">
-      {/* Airflow Rate Section */}
+      {/* Climate Data & Airflow Rate Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-bold">Airflow Rate</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <InputField 
-            label="Airflow Rate" 
-            field="airflowRate" 
-            unit="CFM" 
-            step="1"
-            value={inputs.airflowRate}
-            onChange={updateAirflowRate}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Climate Data Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-bold">Climate Data (Shared)</CardTitle>
+          <CardTitle className="font-bold">Climate Data & Airflow Rate (Shared)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InputField 
+              label="Airflow Rate" 
+              field="airflowRate" 
+              unit="CFM" 
+              step="0.01"
+              value={inputs.airflowRate}
+              onChange={updateAirflowRate}
+            />
+          </div>
+
           <EPWFileHandler 
             climateData={inputs.climateData}
             onClimateDataChange={updateClimateData}
@@ -461,22 +478,27 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                       onChange={(e) => updateColumnName(column.id, e.target.value)}
                       className="font-bold"
                     />
-                    {inputs.buildingColumns.length > 1 && (
+                    <div className="flex gap-1 ml-2">
                       <Button
-                        onClick={() => removeBuildingColumn(column.id)}
+                        onClick={() => duplicateBuildingColumn(column.id)}
                         size="sm"
                         variant="ghost"
-                        className="ml-2"
+                        title="Duplicate building"
                       >
-                        <X className="h-4 w-4" />
+                        <Copy className="h-4 w-4" />
                       </Button>
-                    )}
+                      {inputs.buildingColumns.length > 1 && (
+                        <Button
+                          onClick={() => removeBuildingColumn(column.id)}
+                          size="sm"
+                          variant="ghost"
+                          title="Remove building"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-
-                  <CSVColumnImporter
-                    columnId={column.id}
-                    onDataImported={handleCSVImportForColumn}
-                  />
 
                   {/* Glazing Elements */}
                   <div className="space-y-4 mb-6">
