@@ -146,7 +146,6 @@ const HeatTransferCalculator = () => {
         }
       }
     ],
-    // Legacy fields
     currentBuilding: {
       glazingElements: [
         {
@@ -553,7 +552,7 @@ const HeatTransferCalculator = () => {
 
   const handleCSVImport = (importedInputs: CalculatorInputs) => {
     setInputs(prev => ({ ...prev, ...importedInputs }));
-    toast("CSV data imported successfully");
+    toast("CSV data imported successfully - you can now edit the values before running the simulation");
   };
 
   return (
