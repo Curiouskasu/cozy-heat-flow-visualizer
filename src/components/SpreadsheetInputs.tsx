@@ -1,4 +1,3 @@
-
 import React, { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -77,9 +76,10 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
   }, [setInputs]);
 
   const addBuildingColumn = useCallback(() => {
+    const currentColumns = inputs.buildingColumns || [];
     const newColumn: BuildingColumn = {
       id: Date.now().toString(),
-      name: `Building ${inputs.buildingColumns.length + 1}`,
+      name: `Building ${currentColumns.length + 1}`,
       building: {
         glazingElements: [
           {
@@ -107,24 +107,25 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
 
     setInputs(prev => ({
       ...prev,
-      buildingColumns: [...prev.buildingColumns, newColumn]
+      buildingColumns: [...currentColumns, newColumn]
     }));
-  }, [inputs.buildingColumns.length, setInputs]);
+  }, [inputs.buildingColumns, setInputs]);
 
   const duplicateBuildingColumn = useCallback((sourceColumnId: string) => {
-    const sourceColumn = inputs.buildingColumns.find(col => col.id === sourceColumnId);
+    const currentColumns = inputs.buildingColumns || [];
+    const sourceColumn = currentColumns.find(col => col.id === sourceColumnId);
     if (!sourceColumn) return;
 
     const newColumn: BuildingColumn = {
       id: Date.now().toString(),
       name: `${sourceColumn.name} Copy`,
       building: {
-        glazingElements: sourceColumn.building.glazingElements.map(glazing => ({
+        glazingElements: (sourceColumn.building.glazingElements || []).map(glazing => ({
           ...glazing,
           id: (Date.now() + Math.random()).toString(),
           name: glazing.name
         })),
-        buildingElements: sourceColumn.building.buildingElements.map(element => ({
+        buildingElements: (sourceColumn.building.buildingElements || []).map(element => ({
           ...element,
           id: (Date.now() + Math.random()).toString(),
           name: element.name
@@ -134,14 +135,15 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
 
     setInputs(prev => ({
       ...prev,
-      buildingColumns: [...prev.buildingColumns, newColumn]
+      buildingColumns: [...currentColumns, newColumn]
     }));
   }, [inputs.buildingColumns, setInputs]);
 
   const removeBuildingColumn = useCallback((columnId: string) => {
+    const currentColumns = inputs.buildingColumns || [];
     setInputs(prev => ({
       ...prev,
-      buildingColumns: prev.buildingColumns.filter(col => col.id !== columnId)
+      buildingColumns: currentColumns.filter(col => col.id !== columnId)
     }));
   }, [setInputs]);
 
@@ -300,28 +302,28 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
           label="North Area"
           field={`northArea-${glazing.id}`}
           unit="ft²"
-          value={glazing.northArea}
+          value={glazing.northArea || 0}
           onChange={(value) => updateGlazingElement(columnId, glazing.id, 'northArea', value)}
         />
         <InputField
           label="South Area"
           field={`southArea-${glazing.id}`}
           unit="ft²"
-          value={glazing.southArea}
+          value={glazing.southArea || 0}
           onChange={(value) => updateGlazingElement(columnId, glazing.id, 'southArea', value)}
         />
         <InputField
           label="East Area"
           field={`eastArea-${glazing.id}`}
           unit="ft²"
-          value={glazing.eastArea}
+          value={glazing.eastArea || 0}
           onChange={(value) => updateGlazingElement(columnId, glazing.id, 'eastArea', value)}
         />
         <InputField
           label="West Area"
           field={`westArea-${glazing.id}`}
           unit="ft²"
-          value={glazing.westArea}
+          value={glazing.westArea || 0}
           onChange={(value) => updateGlazingElement(columnId, glazing.id, 'westArea', value)}
         />
       </div>
@@ -331,7 +333,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
           label="Perimeter"
           field={`perimeter-${glazing.id}`}
           unit="ft"
-          value={glazing.perimeter}
+          value={glazing.perimeter || 0}
           onChange={(value) => updateGlazingElement(columnId, glazing.id, 'perimeter', value)}
         />
         <InputField
@@ -339,13 +341,13 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
           field={`uValue-${glazing.id}`}
           unit="Btu/ft²·°F·h"
           step="0.01"
-          value={glazing.uValue}
+          value={glazing.uValue || 0}
           onChange={(value) => updateGlazingElement(columnId, glazing.id, 'uValue', value)}
         />
         <InputField
           label="SHGC"
           field={`shgc-${glazing.id}`}
-          value={glazing.shgc}
+          value={glazing.shgc || 0}
           onChange={(value) => updateGlazingElement(columnId, glazing.id, 'shgc', value)}
         />
       </div>
@@ -358,18 +360,21 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
         label="Area"
         field={`area-${element.id}`}
         unit="ft²"
-        value={element.area}
+        value={element.area || 0}
         onChange={(value) => updateBuildingElement(columnId, element.id, 'area', value)}
       />
       <InputField
         label="R-Value"
         field={`rValue-${element.id}`}
         unit="ft²·°F·h/Btu"
-        value={element.rValue}
+        value={element.rValue || 0}
         onChange={(value) => updateBuildingElement(columnId, element.id, 'rValue', value)}
       />
     </div>
   );
+
+  // Ensure buildingColumns is always an array
+  const safeColumns = inputs.buildingColumns || [];
 
   return (
     <div className="space-y-6">
@@ -385,7 +390,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
               field="airflowRate" 
               unit="CFM" 
               step="0.01"
-              value={inputs.airflowRate}
+              value={inputs.airflowRate || 0}
               onChange={updateAirflowRate}
             />
           </div>
@@ -470,11 +475,11 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
         <CardContent>
           <div className="overflow-x-auto">
             <div className="flex gap-4 min-w-max">
-              {inputs.buildingColumns.map((column) => (
+              {safeColumns.map((column) => (
                 <div key={column.id} className="flex-shrink-0 w-80 border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <Input
-                      value={column.name}
+                      value={column.name || ''}
                       onChange={(e) => updateColumnName(column.id, e.target.value)}
                       className="font-bold"
                     />
@@ -487,7 +492,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
-                      {inputs.buildingColumns.length > 1 && (
+                      {safeColumns.length > 1 && (
                         <Button
                           onClick={() => removeBuildingColumn(column.id)}
                           size="sm"
@@ -513,15 +518,15 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                       </Button>
                     </div>
                     
-                    {column.building.glazingElements.map((glazing) => (
+                    {(column.building?.glazingElements || []).map((glazing) => (
                       <div key={glazing.id} className="border rounded p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <Input
-                            value={glazing.name}
+                            value={glazing.name || ''}
                             onChange={(e) => updateGlazingElement(column.id, glazing.id, 'name', e.target.value)}
                             className="text-sm font-light"
                           />
-                          {column.building.glazingElements.length > 1 && (
+                          {(column.building?.glazingElements || []).length > 1 && (
                             <Button
                               onClick={() => removeGlazingElement(column.id, glazing.id)}
                               size="sm"
@@ -549,15 +554,15 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                       </Button>
                     </div>
                     
-                    {column.building.buildingElements.map((element) => (
+                    {(column.building?.buildingElements || []).map((element) => (
                       <div key={element.id} className="border rounded p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <Input
-                            value={element.name}
+                            value={element.name || ''}
                             onChange={(e) => updateBuildingElement(column.id, element.id, 'name', e.target.value)}
                             className="text-sm font-light"
                           />
-                          {column.building.buildingElements.length > 1 && (
+                          {(column.building?.buildingElements || []).length > 1 && (
                             <Button
                               onClick={() => removeBuildingElement(column.id, element.id)}
                               size="sm"
