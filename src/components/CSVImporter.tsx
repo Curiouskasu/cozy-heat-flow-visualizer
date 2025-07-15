@@ -20,6 +20,10 @@ const CSVImporter = ({ onDataImported }: Props) => {
       const buildingData: any = {};
       
       // Parse CSV data into key-value pairs
+      let currentBuildingName = '';
+      let currentElementType = '';
+      let currentElementIndex = 1;
+      
       lines.forEach(line => {
         const parts = line.split(',');
         if (parts.length >= 3) {
@@ -27,17 +31,106 @@ const CSVImporter = ({ onDataImported }: Props) => {
           const parameter = parts[1].replace(/"/g, '').trim();
           const value = parts[2].replace(/"/g, '').trim();
           
-          if (parameter && value !== '') {
+          // Check if this is a building name row (category contains "Building" and parameter is empty or "Name")
+          if (category.includes('Building') && (parameter === '' || parameter === 'Name' || value.includes('Building') || value.includes('Glazing') || value.includes('element'))) {
+            currentBuildingName = category;
+            if (!buildingData[currentBuildingName]) {
+              buildingData[currentBuildingName] = {
+                glazingElements: [],
+                buildingElements: []
+              };
+            }
+            currentElementIndex = 1;
+            return;
+          }
+          
+          // Check if this is a glazing or element type indicator
+          if (category.includes('Glazing') && parameter === 'Name') {
+            currentElementType = 'glazing';
+            currentElementIndex = parseInt(category.match(/\d+/)?.[0] || '1');
+            return;
+          }
+          
+          if (category.includes('Element') && parameter === 'Name') {
+            currentElementType = 'element';
+            currentElementIndex = parseInt(category.match(/\d+/)?.[0] || '1');
+            return;
+          }
+          
+          // Handle climate data
+          if (category === 'Climate Data') {
             const key = `${category}_${parameter}`;
             const numValue = parseFloat(value);
             data[key] = isNaN(numValue) ? value : numValue;
+            return;
+          }
+          
+          // Handle airflow rate
+          if (category === 'Airflow Rate' || parameter === 'Airflow Rate') {
+            data['airflowRate'] = parseFloat(value) || 0.01;
+            return;
+          }
+          
+          // Handle building-specific data
+          if (currentBuildingName && parameter && value !== '') {
+            if (!buildingData[currentBuildingName]) {
+              buildingData[currentBuildingName] = {
+                glazingElements: [],
+                buildingElements: []
+              };
+            }
             
-            // Track building categories for dynamic building creation
-            if (category.includes('Building') && !category.includes('Climate') && !category.includes('Airflow')) {
-              if (!buildingData[category]) {
-                buildingData[category] = {};
+            const numValue = parseFloat(value);
+            const finalValue = isNaN(numValue) ? value : numValue;
+            
+            // Create glazing element if it doesn't exist
+            if (currentElementType === 'glazing') {
+              let glazingElement = buildingData[currentBuildingName].glazingElements.find((g: any) => g.index === currentElementIndex);
+              if (!glazingElement) {
+                glazingElement = {
+                  id: `glazing-${currentBuildingName}-${currentElementIndex}`,
+                  name: value.includes('Glazing') ? value : `Glazing ${currentElementIndex}`,
+                  index: currentElementIndex,
+                  northArea: 0,
+                  southArea: 0,
+                  eastArea: 0,
+                  westArea: 0,
+                  perimeter: 0,
+                  uValue: 0.3,
+                  shgc: 0
+                };
+                buildingData[currentBuildingName].glazingElements.push(glazingElement);
               }
-              buildingData[category][parameter] = isNaN(numValue) ? value : numValue;
+              
+              // Map parameters to glazing properties
+              if (parameter.includes('North Area')) glazingElement.northArea = finalValue;
+              else if (parameter.includes('South Area')) glazingElement.southArea = finalValue;
+              else if (parameter.includes('East Area')) glazingElement.eastArea = finalValue;
+              else if (parameter.includes('West Area')) glazingElement.westArea = finalValue;
+              else if (parameter.includes('Perimeter')) glazingElement.perimeter = finalValue;
+              else if (parameter.includes('U-Value')) glazingElement.uValue = finalValue;
+              else if (parameter.includes('SHGC')) glazingElement.shgc = finalValue;
+              else if (parameter === 'Name' && typeof finalValue === 'string') glazingElement.name = finalValue;
+            }
+            
+            // Create building element if it doesn't exist
+            else if (currentElementType === 'element') {
+              let buildingElement = buildingData[currentBuildingName].buildingElements.find((e: any) => e.index === currentElementIndex);
+              if (!buildingElement) {
+                buildingElement = {
+                  id: `element-${currentBuildingName}-${currentElementIndex}`,
+                  name: value.includes('Element') ? value : `Element ${currentElementIndex}`,
+                  index: currentElementIndex,
+                  area: 0,
+                  rValue: 0
+                };
+                buildingData[currentBuildingName].buildingElements.push(buildingElement);
+              }
+              
+              // Map parameters to building element properties
+              if (parameter.includes('Area')) buildingElement.area = finalValue;
+              else if (parameter.includes('R-Value')) buildingElement.rValue = finalValue;
+              else if (parameter === 'Name' && typeof finalValue === 'string') buildingElement.name = finalValue;
             }
           }
         }
@@ -50,43 +143,27 @@ const CSVImporter = ({ onDataImported }: Props) => {
       const buildingColumns = Object.keys(buildingData).map((buildingName, index) => {
         const building = buildingData[buildingName];
         
-        // Create glazing elements
-        const glazingElements = [];
-        let glazingIndex = 1;
-        while (building[`Glazing ${glazingIndex}_North Area (Agn)`] !== undefined) {
-          glazingElements.push({
-            id: `glazing-${index}-${glazingIndex}`,
-            name: `Glazing ${glazingIndex}`,
-            northArea: building[`Glazing ${glazingIndex}_North Area (Agn)`] || 0,
-            southArea: building[`Glazing ${glazingIndex}_South Area (Ags)`] || 0,
-            eastArea: building[`Glazing ${glazingIndex}_East Area (Age)`] || 0,
-            westArea: building[`Glazing ${glazingIndex}_West Area (Agw)`] || 0,
-            perimeter: building[`Glazing ${glazingIndex}_Perimeter (Lg)`] || 0,
-            uValue: building[`Glazing ${glazingIndex}_U-Value (Ug)`] || 0.3,
-            shgc: building[`Glazing ${glazingIndex}_SHGC`] || 0
-          });
-          glazingIndex++;
-        }
-
-        // Create building elements
-        const buildingElements = [];
-        let elementIndex = 1;
-        while (building[`Element ${elementIndex}_Area (A)`] !== undefined) {
-          buildingElements.push({
-            id: `element-${index}-${elementIndex}`,
-            name: building[`Element ${elementIndex}_Name`] || `Element ${elementIndex}`,
-            area: building[`Element ${elementIndex}_Area (A)`] || 0,
-            rValue: building[`Element ${elementIndex}_R-Value (R)`] || 0
-          });
-          elementIndex++;
-        }
-
         return {
           id: `building-${index}`,
           name: buildingName.replace(' Building', '').replace('Building ', ''),
           building: {
-            glazingElements,
-            buildingElements
+            glazingElements: building.glazingElements.map((glazing: any) => ({
+              id: glazing.id,
+              name: glazing.name,
+              northArea: glazing.northArea || 0,
+              southArea: glazing.southArea || 0,
+              eastArea: glazing.eastArea || 0,
+              westArea: glazing.westArea || 0,
+              perimeter: glazing.perimeter || 0,
+              uValue: glazing.uValue || 0.3,
+              shgc: glazing.shgc || 0
+            })),
+            buildingElements: building.buildingElements.map((element: any) => ({
+              id: element.id,
+              name: element.name,
+              area: element.area || 0,
+              rValue: element.rValue || 0
+            }))
           }
         };
       });
@@ -103,7 +180,7 @@ const CSVImporter = ({ onDataImported }: Props) => {
           isManualInput: true,
         },
         currentEnergyLoad: 0,
-        airflowRate: data['Airflow Rate'] || 0.01,
+        airflowRate: data['airflowRate'] || 0.01,
         buildingColumns,
         // Legacy fields for backward compatibility - use first building if available
         currentBuilding: buildingColumns[0]?.building || {
