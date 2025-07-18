@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, X, Copy } from "lucide-react";
-import { CalculatorInputs, GlazingElement, BuildingElement, ClimateData, BuildingColumn } from "./HeatTransferCalculator";
+import { CalculatorInputs, GlazingElement, BuildingElement, ClimateData, BuildingColumn, BuildingElementCategory } from "./HeatTransferCalculator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import EPWFileHandler from "./EPWFileHandler";
 import DragDropList from "./DragDropList";
 
@@ -99,6 +100,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
           {
             id: (Date.now() + 1).toString(),
             name: "Element 1",
+            category: "Above Grade Element" as BuildingElementCategory,
             area: 0,
             rValue: 10
           }
@@ -263,6 +265,7 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
                   {
                     id: Date.now().toString(),
                     name: `Element ${(Array.isArray(col.building.buildingElements) ? col.building.buildingElements.length : 0) + 1}`,
+                    category: "Above Grade Element" as BuildingElementCategory,
                     area: 0,
                     rValue: 10
                   }
@@ -375,24 +378,97 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
     </>
   );
 
-  const renderBuildingFields = (element: BuildingElement, columnId: string) => (
-    <div className="grid grid-cols-2 gap-2">
-      <InputField
-        label="Area"
-        field={`area-${element.id}`}
-        unit="ft²"
-        value={element.area}
-        onChange={(value) => updateBuildingElement(columnId, element.id, 'area', value)}
-      />
-      <InputField
-        label="R-Value"
-        field={`rValue-${element.id}`}
-        unit="ft²·°F·h/Btu"
-        value={element.rValue}
-        onChange={(value) => updateBuildingElement(columnId, element.id, 'rValue', value)}
-      />
-    </div>
-  );
+  const renderBuildingFields = (element: BuildingElement, columnId: string) => {
+    const renderFieldsBasedOnCategory = () => {
+      switch (element.category) {
+        case 'Above Grade Element':
+          return (
+            <>
+              <InputField
+                label="Area"
+                field={`area-${element.id}`}
+                unit="ft²"
+                value={element.area}
+                onChange={(value) => updateBuildingElement(columnId, element.id, 'area', value)}
+              />
+              <InputField
+                label="R-Value"
+                field={`rValue-${element.id}`}
+                unit="ft²·°F·h/Btu"
+                value={element.rValue || 0}
+                onChange={(value) => updateBuildingElement(columnId, element.id, 'rValue', value)}
+              />
+            </>
+          );
+        case 'On/Sub-grade Slab':
+          return (
+            <>
+              <InputField
+                label="F-Factor"
+                field={`fFactor-${element.id}`}
+                unit="Btu/h·ft·°F"
+                value={element.fFactor || 0}
+                onChange={(value) => updateBuildingElement(columnId, element.id, 'fFactor', value)}
+              />
+              <InputField
+                label="Perimeter"
+                field={`perimeter-${element.id}`}
+                unit="ft"
+                value={element.perimeter || 0}
+                onChange={(value) => updateBuildingElement(columnId, element.id, 'perimeter', value)}
+              />
+            </>
+          );
+        case 'Basement Walls':
+          return (
+            <>
+              <InputField
+                label="Area"
+                field={`area-${element.id}`}
+                unit="ft²"
+                value={element.area}
+                onChange={(value) => updateBuildingElement(columnId, element.id, 'area', value)}
+              />
+              <InputField
+                label="C-Factor"
+                field={`cFactor-${element.id}`}
+                unit="Btu/h·ft²·°F"
+                value={element.cFactor || 0}
+                onChange={(value) => updateBuildingElement(columnId, element.id, 'cFactor', value)}
+              />
+            </>
+          );
+        default:
+          return null;
+      }
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor={`category-${element.id}`} className="font-light">Category</Label>
+          <Select
+            value={element.category}
+            onValueChange={(value: BuildingElementCategory) => 
+              updateBuildingElement(columnId, element.id, 'category', value)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Above Grade Element">Above Grade Element</SelectItem>
+              <SelectItem value="On/Sub-grade Slab">On/Sub-grade Slab</SelectItem>
+              <SelectItem value="Basement Walls">Basement Walls</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderFieldsBasedOnCategory()}
+        </div>
+      </div>
+    );
+  };
 
   // Ensure buildingColumns is an array before rendering
   const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];

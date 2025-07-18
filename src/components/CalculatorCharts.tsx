@@ -20,28 +20,54 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     const svg = chartElement.querySelector('svg');
     if (!svg) return;
 
+    // Clone the SVG to avoid modifying the original
+    const svgClone = svg.cloneNode(true) as SVGElement;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const svgData = new XMLSerializer().serializeToString(svg);
+    // Get actual dimensions
+    const bbox = svg.getBBox();
+    const width = bbox.width || svg.clientWidth || 800;
+    const height = bbox.height || svg.clientHeight || 400;
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Set background styles for the SVG
+    svgClone.setAttribute('width', width.toString());
+    svgClone.setAttribute('height', height.toString());
+    svgClone.style.background = 'white';
+    
+    const svgData = new XMLSerializer().serializeToString(svgClone);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
     const img = new Image();
-    
-    canvas.width = svg.clientWidth || 800;
-    canvas.height = svg.clientHeight || 400;
-    
     img.onload = () => {
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, width, height);
       
-      const link = document.createElement('a');
-      link.download = `${filename}.png`;
-      link.href = canvas.toDataURL();
-      link.click();
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const link = document.createElement('a');
+          link.download = `${filename}.png`;
+          link.href = URL.createObjectURL(blob);
+          link.click();
+          URL.revokeObjectURL(link.href);
+        }
+      }, 'image/png');
+      
+      URL.revokeObjectURL(url);
     };
     
-    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+    img.onerror = () => {
+      console.error('Failed to load SVG image');
+      URL.revokeObjectURL(url);
+    };
+    
+    img.src = url;
   };
 
   // Download CSV function
