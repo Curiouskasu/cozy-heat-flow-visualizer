@@ -14,6 +14,7 @@ interface Props {
 const CalculatorChartsComponent = ({ inputs, results }: Props) => {
   // Download chart as PNG function
   const downloadChart = (chartId: string, filename: string) => {
+    console.log("Trying to Download Chart!")
     const chartElement = document.getElementById(chartId);
     if (!chartElement) return;
 
