@@ -14,28 +14,42 @@ interface Props {
 const CalculatorChartsComponent = ({ inputs, results }: Props) => {
   // Download chart as PNG function
   const downloadChart = (chartId: string, filename: string) => {
-    console.log("Trying to Download Chart!")
     const chartElement = document.getElementById(chartId);
     if (!chartElement) return;
 
-    const svg = chartElement.querySelector('svg');
+    // Fix 1: Proper SVG type checking and casting
+    let svg: SVGSVGElement | null = null;
+    
+    if (chartElement.tagName.toLowerCase() === 'svg') {
+        svg = chartElement as unknown as SVGSVGElement;
+    } else {
+        svg = chartElement.querySelector('svg');
+    }
+    
     if (!svg) return;
 
-    // Clone the SVG to avoid modifying the original
-    const svgClone = svg.cloneNode(true) as SVGElement;
+    // Fix 2: Clone with proper typing
+    const svgClone = svg.cloneNode(true) as SVGSVGElement;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Get actual dimensions
-    const bbox = svg.getBBox();
-    const width = bbox.width || svg.clientWidth || 800;
-    const height = bbox.height || svg.clientHeight || 400;
+    // Fix 3: Handle getBBox() which might not exist on all elements
+    let width: number, height: number;
+    try {
+        const bbox = svg.getBBox();
+        width = bbox.width || svg.clientWidth || 800;
+        height = bbox.height || svg.clientHeight || 400;
+    } catch (e) {
+        // Fallback if getBBox() fails
+        width = svg.clientWidth || 800;
+        height = svg.clientHeight || 400;
+    }
     
     canvas.width = width;
     canvas.height = height;
     
-    // Set background styles for the SVG
+    // Fix 4: Ensure setAttribute gets string values
     svgClone.setAttribute('width', width.toString());
     svgClone.setAttribute('height', height.toString());
     svgClone.style.background = 'white';
@@ -46,31 +60,30 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     
     const img = new Image();
     img.onload = () => {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, width, height);
-      
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const link = document.createElement('a');
-          link.download = `${filename}.png`;
-          link.href = URL.createObjectURL(blob);
-          link.click();
-          URL.revokeObjectURL(link.href);
-        }
-      }, 'image/png');
-      
-      URL.revokeObjectURL(url);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob((blob) => {
+            if (blob) {
+                const link = document.createElement('a');
+                link.download = `${filename}.png`;
+                link.href = URL.createObjectURL(blob);
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+        }, 'image/png');
+        
+        URL.revokeObjectURL(url);
     };
     
     img.onerror = () => {
-      console.error('Failed to load SVG image');
-      URL.revokeObjectURL(url);
+        console.error('Failed to load SVG image');
+        URL.revokeObjectURL(url);
     };
     
     img.src = url;
-  };
-
+};
   // Download CSV function
   const downloadCSV = (data: any[], filename: string) => {
     if (data.length === 0) return;
