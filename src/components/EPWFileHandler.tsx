@@ -1,123 +1,121 @@
-import React, { useRef, useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, X, FileText } from 'lucide-react';
-// import { ClimateData } from './HeatTransferCalculator';
-//
-// const ClimateData = {
-//   heatingDegreeDays: number,
-//   coolingDegreeDays: number,
-//   heatingBaseTemp: number,
-//   coolingBaseTemp: number,
-//   northSolarRadiation: number,
-//   southSolarRadiation: number,
-//   eastSolarRadiation: number,
-//   westSolarRadiation: number,
-//   isManualInput: boolean,
-//   epwFileName?: string
-// }
-//
-// <-- Uncomment/replace above line as appropriate for your codebase
+import React, { useRef, useState } from "react";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui"; // Adjust these imports to your project structure!
+import { Upload, X, FileText } from "lucide-react";
 
 const DEFAULT_HEAT_BASE = 18;
-const DEFAULT_COOL_BASE = 24;
+const DEFAULT_COOL_BASE = 18;
 
 function sunAzimuthToFacadeIdx(azimuth) {
-  // Azimuth in EPW: 0 = North, 90 = East, 180 = South, 270 = West (but can vary!)
-  // For simplicity, we'll use:
-  // 315-45: North, 45-135: East, 135-225: South, 225-315: West
-
-  azimuth = (azimuth + 360) % 360;
-  if ((azimuth > 315) || (azimuth <= 45)) return 0; // North
+  // North: 315 to 45, East: 45-135, South: 135-225, West: 225-315
+  azimuth = (Number(azimuth) + 360) % 360;
+  if (azimuth > 315 || azimuth <= 45) return 0; // North
   if (azimuth > 45 && azimuth <= 135) return 1; // East
   if (azimuth > 135 && azimuth <= 225) return 2; // South
   if (azimuth > 225 && azimuth <= 315) return 3; // West
-  return 2; // Default to South
+  return 2;
 }
 
+function safeParseFloat(val) {
+  const n = parseFloat(val);
+  return isNaN(n) ? 0 : n;
+}
+
+// MAIN COMPONENT
 const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
   const fileInputRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('upload');
+  const [activeTab, setActiveTab] = useState("upload");
   const [manualData, setManualData] = useState({
     heatingDegreeDays: climateData.heatingDegreeDays || 0,
     coolingDegreeDays: climateData.coolingDegreeDays || 0,
-    heatingBaseTemp: climateData.heatingBaseTemp || DEFAULT_HEAT_BASE,
-    coolingBaseTemp: climateData.coolingBaseTemp || DEFAULT_COOL_BASE,
+    heatingBaseTemp: climateData.heatingBaseTemp ?? DEFAULT_HEAT_BASE,
+    coolingBaseTemp: climateData.coolingBaseTemp ?? DEFAULT_COOL_BASE,
     northSolarRadiation: climateData.northSolarRadiation || 0,
     southSolarRadiation: climateData.southSolarRadiation || 0,
     eastSolarRadiation: climateData.eastSolarRadiation || 0,
     westSolarRadiation: climateData.westSolarRadiation || 0,
   });
 
-  // Keep base temp in extracted, display them in upload summary
   const [baseTemps, setBaseTemps] = useState({
     heatingBaseTemp: manualData.heatingBaseTemp,
-    coolingBaseTemp: manualData.coolingBaseTemp
+    coolingBaseTemp: manualData.coolingBaseTemp,
   });
 
-  // Parse and extract data from EPW file
+  // ---- EPW FILE PARSING & COMPUTATION ----
   const handleFileUpload = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    const heatingBaseTemp = baseTemps.heatingBaseTemp ?? DEFAULT_HEAT_BASE;
+    const coolingBaseTemp = baseTemps.coolingBaseTemp ?? DEFAULT_COOL_BASE;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const content = e.target?.result;
-      const lines = content.split('\n');
       try {
-        // Find start of data
-        let dataStartIdx = lines.findIndex(l => l.startsWith('DATA PERIODS')) + 1;
-        if (dataStartIdx <= 0) dataStartIdx = 8;
-        const labelLine = lines[dataStartIdx];
-        const colNames = labelLine.split(',').map(s => s.trim().toLowerCase());
+        const lines = e.target.result.split(/\r?\n/).filter(l => !!l.trim());
+        // Find header: EPW spec is line 8: header. Data starts at 9 (0-based)
+        const headerLine = lines[8];
+        if (!headerLine) throw new Error("EPW: No column header row found.");
+        const colNames = headerLine.split(",").map((x) => x.trim().toLowerCase());
 
-        const colIndex = (key) => colNames.findIndex(n => n.includes(key));
-        const idxDryBulb = colIndex('dry bulb');
-        const idxGHorRad = colIndex('global horiz');
-        const idxAzimuth = colIndex('azimuth');
+        // Indexes
+        const idxDryBulb = colNames.findIndex(k => k.includes("dry bulb"));
+        const idxGHorRad = colNames.findIndex(k => k.includes("global horiz"));
+        let idxAzimuth = colNames.findIndex(k => k.includes("azimuth"));
+        const idxHour = 1; // EPW: 0=Year, 1=Month, 2=Day, 3=Hour
 
-        // Use the latest set base temps
-        const heatingBaseTemp = baseTemps.heatingBaseTemp || DEFAULT_HEAT_BASE;
-        const coolingBaseTemp = baseTemps.coolingBaseTemp || DEFAULT_COOL_BASE;
+        if (idxDryBulb === -1 || idxGHorRad === -1) {
+          throw new Error("EPW file missing required columns: Dry Bulb or Global Horizontal Radiation.");
+        }
+        // If azimuth missing, fallback to -1 index.
 
-        let hdh = 0, cdh = 0;
+        let hddHours = 0, cddHours = 0;
         let eds = [0, 0, 0, 0]; // N, E, S, W
 
-        for (let i = dataStartIdx + 1; i < lines.length; ++i) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          const cols = line.split(',');
-          if (cols.length < Math.max(idxDryBulb, idxGHorRad) + 1) continue;
+        for (let i = 9; i < lines.length; ++i) {
+          const cols = lines[i].split(",");
+          if (cols.length < colNames.length) continue;
+          const tdb = safeParseFloat(cols[idxDryBulb]);
+          if (tdb !== undefined) {
+            if (tdb < heatingBaseTemp) hddHours += (heatingBaseTemp - tdb);
+            if (tdb > coolingBaseTemp) cddHours += (tdb - coolingBaseTemp);
+          }
+          const ghr = safeParseFloat(cols[idxGHorRad]);
 
-          const tdb = parseFloat(cols[idxDryBulb]);
-          if (isNaN(tdb)) continue;
-
-          if (tdb < heatingBaseTemp) hdh += (heatingBaseTemp - tdb);
-          if (tdb > coolingBaseTemp) cdh += (tdb - coolingBaseTemp);
-
-          const ghr = parseFloat(cols[idxGHorRad]) || 0; // Wh/m² for this hour
-          const azimuth = idxAzimuth !== -1 && cols[idxAzimuth] ? parseFloat(cols[idxAzimuth]) : null;
-          let facadeIdx;
-          if (azimuth != null && !isNaN(azimuth)) {
-            facadeIdx = sunAzimuthToFacadeIdx(azimuth);
+          // FACADE MAPPING
+          let facadeIdx = 2; // Default: south
+          if (idxAzimuth !== -1) {
+            const az = safeParseFloat(cols[idxAzimuth]);
+            facadeIdx = sunAzimuthToFacadeIdx(az);
           } else {
-            // crude fallback: time-of-day for sun's direction
-            const hour = parseInt(cols[1]);
-            if (hour >= 6 && hour < 12) facadeIdx = 1; // east morning
-            else if (hour === 12) facadeIdx = 2; // south midday
-            else if (hour > 12 && hour < 18) facadeIdx = 3; // west afternoon
-            else facadeIdx = 0; // night/north
+            // Approximate based on hour
+            const hour = safeParseFloat(cols[idxHour]);
+            if (hour >= 6 && hour < 12) facadeIdx = 1;
+            else if (hour >= 12 && hour < 18) facadeIdx = 3;
+            else if (hour >= 18 || hour < 6) facadeIdx = 0;
           }
           eds[facadeIdx] += ghr;
         }
-
-        const heatingDegreeDays = +(hdh / 24).toFixed(1);
-        const coolingDegreeDays = +(cdh / 24).toFixed(1);
-        const [north, east, south, west] = eds.map(e => +e.toFixed(1));
+        // Convert h/c degree-hours to degree-days
+        const heatingDegreeDays = +(hddHours / 24).toFixed(1);
+        const coolingDegreeDays = +(cddHours / 24).toFixed(1);
+        const [north, east, south, west] = eds.map(w => +w.toFixed(1));
 
         const extractedData = {
           heatingDegreeDays,
@@ -131,12 +129,11 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
           isManualInput: false,
           epwFileName: file.name,
         };
-
         onClimateDataChange(extractedData);
-        setActiveTab('upload');
-      } catch (error) {
-        console.error('Error parsing EPW file:', error);
-        alert('Error parsing EPW file. Please check the file format.');
+        setActiveTab("upload");
+      } catch (err) {
+        console.error("Error parsing EPW:", err);
+        alert("Error parsing EPW file. " + err.message);
       }
     };
     reader.readAsText(file);
@@ -146,28 +143,22 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
     onClimateDataChange({
       ...climateData,
       isManualInput: true,
-      epwFileName: undefined
+      epwFileName: undefined,
     });
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    setActiveTab('manual');
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setActiveTab("manual");
   };
 
   const handleManualInputChange = (field, value) => {
-    setManualData(prev => ({ ...prev, [field]: value }));
-    if (field === 'heatingBaseTemp' || field === 'coolingBaseTemp') {
-      setBaseTemps(prev => ({ ...prev, [field]: value }));
+    setManualData((prev) => ({ ...prev, [field]: value }));
+    if (field === "heatingBaseTemp" || field === "coolingBaseTemp") {
+      setBaseTemps((prev) => ({ ...prev, [field]: value }));
     }
   };
 
   const confirmManualData = () => {
-    const updatedClimateData = {
-      ...manualData,
-      isManualInput: true,
-      epwFileName: undefined,
-    };
-    onClimateDataChange(updatedClimateData);
+    const updated = { ...manualData, isManualInput: true, epwFileName: undefined };
+    onClimateDataChange(updated);
     setBaseTemps({
       heatingBaseTemp: manualData.heatingBaseTemp,
       coolingBaseTemp: manualData.coolingBaseTemp,
@@ -183,46 +174,48 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={val => setActiveTab(val)}>
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 mb-2">
             <TabsTrigger value="upload">EPW File Upload</TabsTrigger>
             <TabsTrigger value="manual">Manual Input</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upload" className="space-y-4">
             {!climateData.epwFileName ? (
-              <div className="space-y-4">
-                <div className="text-sm text-muted-foreground">
+              <>
+                <p className="text-sm text-muted-foreground">
                   Upload an EPW weather file from your computer. The system will automatically extract:
-                  <ul className="list-disc list-inside mt-2 space-y-1">
+                  <ul className="list-disc list-inside ml-4 mt-1">
                     <li>Heating Degree Days (HDD)</li>
                     <li>Cooling Degree Days (CDD)</li>
                     <li>Solar radiation (Ed) on North, South, East, and West facades</li>
                   </ul>
-                </div>
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <Label htmlFor="heat-base-upload">Heating Base Temperature (°C)</Label>
                     <Input
                       id="heat-base-upload"
                       type="number"
+                      min="0"
+                      step="0.1"
                       value={baseTemps.heatingBaseTemp}
-                      onChange={e=>{
-                        const val = parseFloat(e.target.value) || 0;
-                        setBaseTemps(b=>({...b,heatingBaseTemp:val}));
-                      }}
+                      onChange={e =>
+                        setBaseTemps(prev=>({...prev, heatingBaseTemp:parseFloat(e.target.value) || 0}))
+                      }
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <Label htmlFor="cool-base-upload">Cooling Base Temperature (°C)</Label>
                     <Input
                       id="cool-base-upload"
                       type="number"
+                      min="0"
+                      step="0.1"
                       value={baseTemps.coolingBaseTemp}
-                      onChange={e=>{
-                        const val = parseFloat(e.target.value) || 0;
-                        setBaseTemps(b=>({...b,coolingBaseTemp:val}));
-                      }}
+                      onChange={e =>
+                        setBaseTemps(prev=>({...prev, coolingBaseTemp:parseFloat(e.target.value) || 0}))
+                      }
                     />
                   </div>
                 </div>
@@ -241,28 +234,22 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-              </div>
+              </>
             ) : (
-              <div className="space-y-4">
+              <>
                 <div className="flex items-center gap-4 p-4 bg-green-50 rounded-lg border border-green-200">
                   <div className="flex-1">
                     <div className="font-medium text-green-800">EPW File Loaded Successfully</div>
                     <div className="text-sm text-green-600">{climateData.epwFileName}</div>
                   </div>
-                  <Button
-                    onClick={handleRemoveFile}
-                    size="sm"
-                    variant="outline"
-                    className="flex items-center gap-1"
-                  >
+                  <Button onClick={handleRemoveFile} size="sm" variant="outline" className="flex items-center gap-1">
                     <X className="h-3 w-3" />
                     Remove
                   </Button>
                 </div>
                 <div className="text-sm text-muted-foreground mb-2">
-                  Values extracted from your EPW file. Change base temperature above and re-upload to update.
+                  Values extracted from your EPW file. Adjust the base temperature and re-upload to update derived data.
                 </div>
-
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -305,97 +292,93 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
                     </TableRow>
                   </TableBody>
                 </Table>
-              </div>
+              </>
             )}
           </TabsContent>
 
           <TabsContent value="manual" className="space-y-4">
-            <div className="text-sm text-muted-foreground mb-4">
+            <div className="text-sm text-muted-foreground mb-2">
               Enter values manually. Set the base temperature for heating and cooling degree days.
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="hdd">Heating Degree Days (HDD)</Label>
                 <Input
                   id="hdd"
                   type="number"
                   value={manualData.heatingDegreeDays}
-                  onChange={e => handleManualInputChange('heatingDegreeDays', parseFloat(e.target.value) || 0)}
+                  onChange={e => handleManualInputChange("heatingDegreeDays", parseFloat(e.target.value) || 0)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="cdd">Cooling Degree Days (CDD)</Label>
                 <Input
                   id="cdd"
                   type="number"
                   value={manualData.coolingDegreeDays}
-                  onChange={e => handleManualInputChange('coolingDegreeDays', parseFloat(e.target.value) || 0)}
+                  onChange={e => handleManualInputChange("coolingDegreeDays", parseFloat(e.target.value) || 0)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="heat-base">Heating Base Temp (°C)</Label>
                 <Input
                   id="heat-base"
                   type="number"
                   value={manualData.heatingBaseTemp}
-                  onChange={e => handleManualInputChange('heatingBaseTemp', parseFloat(e.target.value) || 0)}
+                  onChange={e => handleManualInputChange("heatingBaseTemp", parseFloat(e.target.value) || 0)}
                 />
               </div>
-
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="cool-base">Cooling Base Temp (°C)</Label>
                 <Input
                   id="cool-base"
                   type="number"
                   value={manualData.coolingBaseTemp}
-                  onChange={e => handleManualInputChange('coolingBaseTemp', parseFloat(e.target.value) || 0)}
+                  onChange={e => handleManualInputChange("coolingBaseTemp", parseFloat(e.target.value) || 0)}
                 />
               </div>
             </div>
-
-            <div className="space-y-4">
-              <h4 className="font-medium">Solar Radiation (Ed) [Wh/m²]</h4>
+            <div className="space-y-2">
+              <h4 className="font-medium">Solar Radiation (Ed) [Wh/m², annual sum]</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="north-solar">North</Label>
                   <Input
                     id="north-solar"
                     type="number"
                     value={manualData.northSolarRadiation}
-                    onChange={e => handleManualInputChange('northSolarRadiation', parseFloat(e.target.value) || 0)}
+                    onChange={e => handleManualInputChange("northSolarRadiation", parseFloat(e.target.value) || 0)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="south-solar">South</Label>
                   <Input
                     id="south-solar"
                     type="number"
                     value={manualData.southSolarRadiation}
-                    onChange={e => handleManualInputChange('southSolarRadiation', parseFloat(e.target.value) || 0)}
+                    onChange={e => handleManualInputChange("southSolarRadiation", parseFloat(e.target.value) || 0)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="east-solar">East</Label>
                   <Input
                     id="east-solar"
                     type="number"
                     value={manualData.eastSolarRadiation}
-                    onChange={e => handleManualInputChange('eastSolarRadiation', parseFloat(e.target.value) || 0)}
+                    onChange={e => handleManualInputChange("eastSolarRadiation", parseFloat(e.target.value) || 0)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="west-solar">West</Label>
                   <Input
                     id="west-solar"
                     type="number"
                     value={manualData.westSolarRadiation}
-                    onChange={e => handleManualInputChange('westSolarRadiation', parseFloat(e.target.value) || 0)}
+                    onChange={e => handleManualInputChange("westSolarRadiation", parseFloat(e.target.value) || 0)}
                   />
                 </div>
               </div>
             </div>
-
             <Button onClick={confirmManualData} className="w-full">
               Confirm & Continue
             </Button>
