@@ -496,62 +496,6 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
             climateData={inputs.climateData}
             onClimateDataChange={updateClimateData}
           />
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField 
-              label="Heating Degree Days (Th)" 
-              field="heatingDegreeDays" 
-              unit="°F-days" 
-              step="1"
-              value={inputs.climateData.heatingDegreeDays}
-              onChange={(value) => updateClimateField('heatingDegreeDays', value)}
-              disabled={!inputs.climateData.isManualInput}
-            />
-            <InputField 
-              label="Cooling Degree Days (Tc)" 
-              field="coolingDegreeDays" 
-              unit="°F-days" 
-              step="1"
-              value={inputs.climateData.coolingDegreeDays}
-              onChange={(value) => updateClimateField('coolingDegreeDays', value)}
-              disabled={!inputs.climateData.isManualInput}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <InputField 
-              label="North Solar Radiation" 
-              field="northSolarRadiation" 
-              unit="Btu/ft²" 
-              value={inputs.climateData.northSolarRadiation}
-              onChange={(value) => updateClimateField('northSolarRadiation', value)}
-              disabled={!inputs.climateData.isManualInput}
-            />
-            <InputField 
-              label="South Solar Radiation" 
-              field="southSolarRadiation" 
-              unit="Btu/ft²" 
-              value={inputs.climateData.southSolarRadiation}
-              onChange={(value) => updateClimateField('southSolarRadiation', value)}
-              disabled={!inputs.climateData.isManualInput}
-            />
-            <InputField 
-              label="East Solar Radiation" 
-              field="eastSolarRadiation" 
-              unit="Btu/ft²" 
-              value={inputs.climateData.eastSolarRadiation}
-              onChange={(value) => updateClimateField('eastSolarRadiation', value)}
-              disabled={!inputs.climateData.isManualInput}
-            />
-            <InputField 
-              label="West Solar Radiation" 
-              field="westSolarRadiation" 
-              unit="Btu/ft²" 
-              value={inputs.climateData.westSolarRadiation}
-              onChange={(value) => updateClimateField('westSolarRadiation', value)}
-              disabled={!inputs.climateData.isManualInput}
-            />
-          </div>
         </CardContent>
       </Card>
 
