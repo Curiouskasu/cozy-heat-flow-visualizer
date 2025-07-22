@@ -61,7 +61,7 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+        const lines = (e.target?.result as string || '').split(/\r?\n/).filter(l => l.trim());
         // EPW: line 8 (index 8) is the column header
         const headerLine = lines[8];
         const headers = headerLine.split(",").map(s => s.trim());
