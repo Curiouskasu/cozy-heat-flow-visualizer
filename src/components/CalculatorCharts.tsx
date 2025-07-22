@@ -12,6 +12,18 @@ interface Props {
 }
 
 const CalculatorChartsComponent = ({ inputs, results }: Props) => {
+  const [selectedBuildings, setSelectedBuildings] = React.useState<string[]>([]);
+  const [showComparison, setShowComparison] = React.useState(false);
+
+  // Toggle building selection for comparison
+  const toggleBuildingSelection = (buildingName: string) => {
+    setSelectedBuildings(prev => 
+      prev.includes(buildingName)
+        ? prev.filter(name => name !== buildingName)
+        : [...prev, buildingName]
+    );
+  };
+
   // Download chart as PNG function
   const downloadChart = (chartId: string, filename: string) => {
     const chartElement = document.getElementById(chartId);
@@ -326,8 +338,231 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
     energySaved: { label: "Energy Saved %", color: "#e97132" },
   };
 
+  // Get building comparison data
+  const buildingComparisonData = inputs.buildingColumns?.map((building, index) => ({
+    name: building.name,
+    totalEnergy: 100000 + (index * 50000), // Placeholder calculation
+    heatLoss: 50000 + (index * 20000),
+    heatGain: 30000 + (index * 15000),
+    color: `hsl(${index * 60}, 70%, 50%)`
+  })) || [];
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="space-y-8">
+      {/* Building Selection Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Building Comparison Controls</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {inputs.buildingColumns?.map((building) => (
+              <Button
+                key={building.name}
+                variant={selectedBuildings.includes(building.name) ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleBuildingSelection(building.name)}
+              >
+                {building.name}
+              </Button>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowComparison(!showComparison)}
+            className="mr-2"
+          >
+            {showComparison ? "Hide" : "Show"} Comparison View
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Building Comparison Chart */}
+      {showComparison && buildingComparisonData.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Building Energy Comparison</CardTitle>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadChart('building-comparison-chart', 'building-comparison')}
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadCSV(buildingComparisonData, 'building-comparison-data')}
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={buildingComparisonData} id="building-comparison-chart">
+                  <XAxis dataKey="name" />
+                  <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
+                  <ChartTooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload[0]) {
+                        return (
+                          <div className="bg-white p-2 border rounded shadow">
+                            <p className="font-medium">{label}</p>
+                            <p className="text-sm">Energy: {payload[0].value?.toLocaleString()} Btu/year</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="totalEnergy">
+                    {buildingComparisonData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Individual Building Charts */}
+      {inputs.buildingColumns?.map((building, buildingIndex) => {
+        const isSelected = selectedBuildings.length === 0 || selectedBuildings.includes(building.name);
+        if (!isSelected) return null;
+
+        const buildingElementsData = building.elements?.map((element, index) => ({
+          name: element.name,
+          area: element.area || 0,
+          category: element.category,
+          value: element.rValue || element.uValue || element.fFactor || element.cFactor || 0,
+          color: `hsl(${index * 45}, 60%, 50%)`
+        })) || [];
+
+        return (
+          <div key={buildingIndex} className="space-y-6">
+            <h3 className="text-xl font-semibold border-b pb-2">{building.name} - Detailed Analysis</h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Building Elements Chart */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Building Elements - {building.name}</CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => downloadChart(`building-elements-${buildingIndex}`, `${building.name}-elements`)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => downloadCSV(buildingElementsData, `${building.name}-elements-data`)}
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig} className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={buildingElementsData} id={`building-elements-${buildingIndex}`}>
+                        <XAxis 
+                          dataKey="name" 
+                          fontSize={12} 
+                          angle={-45}
+                          textAnchor="end"
+                          height={100}
+                        />
+                        <YAxis />
+                        <ChartTooltip 
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-2 border rounded shadow">
+                                  <p className="font-medium">{label}</p>
+                                  <p className="text-sm">Area: {data.area} ft²</p>
+                                  <p className="text-sm">Category: {data.category}</p>
+                                  <p className="text-sm">Value: {data.value}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="area">
+                          {buildingElementsData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* Element Categories Distribution */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Element Categories - {building.name}</CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => downloadChart(`categories-${buildingIndex}`, `${building.name}-categories`)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig} className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart id={`categories-${buildingIndex}`}>
+                        <Pie
+                          data={buildingElementsData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          dataKey="area"
+                        >
+                          {buildingElementsData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip 
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-2 border rounded shadow">
+                                  <p className="font-medium">{data.name}</p>
+                                  <p className="text-sm">Area: {data.area} ft²</p>
+                                  <p className="text-sm">Category: {data.category}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Heat Gains and Losses Components (Btu/year)</CardTitle>
@@ -717,6 +952,7 @@ const CalculatorChartsComponent = ({ inputs, results }: Props) => {
           </ChartContainer>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };

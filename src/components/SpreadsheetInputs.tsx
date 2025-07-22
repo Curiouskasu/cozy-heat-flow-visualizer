@@ -1,8 +1,10 @@
 import React from "react";
-import Papa from "papaparse";
-import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CalculatorInputs } from "./HeatTransferCalculator";
+import ManualBuildingInput from "./ManualBuildingInput";
+import ManualClimateInput from "./ManualClimateInput";
 
 interface Props {
   inputs: CalculatorInputs;
@@ -12,15 +14,8 @@ interface Props {
 const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Climate Data</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>Climate data is now managed through the EPW File Handler or manual input section above.</p>
-        </CardContent>
-      </Card>
-
+      <ManualClimateInput inputs={inputs} setInputs={setInputs} />
+      
       <Card>
         <CardHeader>
           <CardTitle>General Inputs</CardTitle>
@@ -28,26 +23,28 @@ const SpreadsheetInputs = ({ inputs, setInputs }: Props) => {
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Airflow Rate (CFM)</label>
-              <input
+              <Label htmlFor="airflow-rate">Airflow Rate (CFM)</Label>
+              <Input
+                id="airflow-rate"
                 type="number"
-                className="w-full px-3 py-2 border border-input bg-background rounded-md"
                 value={inputs.airflowRate || 0}
                 onChange={(e) => setInputs(prev => ({ ...prev, airflowRate: Number(e.target.value) }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="current-energy-load">Current Energy Load (Btu/year)</Label>
+              <Input
+                id="current-energy-load"
+                type="number"
+                value={inputs.currentEnergyLoad || 0}
+                onChange={(e) => setInputs(prev => ({ ...prev, currentEnergyLoad: Number(e.target.value) }))}
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Building Data</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>Building data is now managed through the CSV import feature above. Use the CSV import to load multiple buildings with their respective elements.</p>
-        </CardContent>
-      </Card>
+      <ManualBuildingInput inputs={inputs} setInputs={setInputs} />
     </div>
   );
 };

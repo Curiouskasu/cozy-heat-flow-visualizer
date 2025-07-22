@@ -165,7 +165,11 @@ const CSVImporter = ({ onDataImported }: Props) => {
         },
         currentEnergyLoad: 0,
         airflowRate: data['Airflow Rate'] || 0.01,
-        buildingColumns,
+        buildingColumns: buildingColumns.map(col => ({
+          id: col.id,
+          name: col.name,
+          elements: col.building?.buildingElements || []
+        })),
         // Legacy fields for backward compatibility
         currentBuilding: buildingColumns[0]?.building || {
           glazingElements: [],

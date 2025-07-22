@@ -34,14 +34,15 @@ export interface GlazingElement {
   shgc: number;
 }
 
-export type BuildingElementCategory = 'Above Grade Element' | 'On/Sub-grade Slab' | 'Basement Walls';
+export type BuildingElementCategory = 'glazing' | 'aboveGrade' | 'slab' | 'basementWall';
 
 export interface BuildingElement {
-  id: string;
+  id?: string;
   name: string;
   category: BuildingElementCategory;
   area: number;
   rValue?: number; // For Above Grade Element and Basement Walls
+  uValue?: number; // For glazing
   fFactor?: number; // For On/Sub-grade Slab
   perimeter?: number; // For On/Sub-grade Slab
   cFactor?: number; // For Basement Walls
@@ -53,9 +54,9 @@ export interface BuildingData {
 }
 
 export interface BuildingColumn {
-  id: string;
+  id?: string;
   name: string;
-  building: BuildingData;
+  elements: BuildingElement[];
 }
 
 export interface CalculatorInputs {
@@ -63,6 +64,13 @@ export interface CalculatorInputs {
   currentEnergyLoad: number;
   airflowRate: number;
   buildingColumns: BuildingColumn[];
+  // Manual climate inputs
+  heatingBaseTemp?: number;
+  coolingBaseTemp?: number;
+  edNorth?: number;
+  edSouth?: number;
+  edEast?: number;
+  edWest?: number;
   // Legacy fields for backward compatibility
   currentBuilding: BuildingData;
   proposedBuilding: BuildingData;
@@ -127,30 +135,22 @@ const HeatTransferCalculator = () => {
       {
         id: 'building1',
         name: 'Building 1',
-        building: {
-          glazingElements: [
-            {
-              id: Date.now().toString(),
-              name: "Glazing 1",
-              northArea: 100,
-              southArea: 100,
-              eastArea: 50,
-              westArea: 50,
-              perimeter: 100,
-              uValue: 0.5,
-              shgc: 0.5,
-            },
-          ],
-          buildingElements: [
-            {
-              id: Date.now().toString(),
-              name: "Wall 1",
-              category: "Above Grade Element",
-              area: 400,
-              rValue: 15,
-            },
-          ],
-        }
+        elements: [
+          {
+            id: Date.now().toString(),
+            name: "Glazing 1",
+            category: "glazing",
+            area: 300,
+            uValue: 0.5,
+          },
+          {
+            id: Date.now().toString(),
+            name: "Wall 1",
+            category: "aboveGrade",
+            area: 400,
+            rValue: 15,
+          },
+        ]
       }
     ],
     currentBuilding: {
@@ -171,7 +171,7 @@ const HeatTransferCalculator = () => {
         {
           id: Date.now().toString(),
           name: "Wall 1",
-          category: "Above Grade Element",
+          category: "aboveGrade",
           area: 400,
           rValue: 15,
         },
@@ -195,7 +195,7 @@ const HeatTransferCalculator = () => {
         {
           id: Date.now().toString(),
           name: "Wall 1",
-          category: "Above Grade Element",
+          category: "aboveGrade",
           area: 450,
           rValue: 20,
         },
@@ -238,18 +238,12 @@ const HeatTransferCalculator = () => {
             {
               id: 'current',
               name: 'Current Building',
-              building: parsedInputs.currentBuilding || {
-                glazingElements: [],
-                buildingElements: []
-              }
+              elements: []
             },
             {
               id: 'proposed',
               name: 'Proposed Building',
-              building: parsedInputs.proposedBuilding || {
-                glazingElements: [],
-                buildingElements: []
-              }
+              elements: []
             }
           ];
         }
@@ -257,28 +251,20 @@ const HeatTransferCalculator = () => {
         // Ensure each building column has proper structure and migrate legacy data
         parsedInputs.buildingColumns = parsedInputs.buildingColumns.map((col: any) => ({
           ...col,
-          building: {
-            glazingElements: Array.isArray(col.building?.glazingElements) ? col.building.glazingElements : [],
-            buildingElements: Array.isArray(col.building?.buildingElements) 
-              ? col.building.buildingElements.map((el: any) => ({
-                  ...el,
-                  category: el.category || 'Above Grade Element' // Default for legacy data
-                }))
-              : []
-          }
+          elements: Array.isArray(col.elements) ? col.elements : []
         }));
         
         // Migrate legacy currentBuilding and proposedBuilding data
         if (parsedInputs.currentBuilding?.buildingElements) {
           parsedInputs.currentBuilding.buildingElements = parsedInputs.currentBuilding.buildingElements.map((el: any) => ({
             ...el,
-            category: el.category || 'Above Grade Element'
+            category: el.category || 'aboveGrade'
           }));
         }
         if (parsedInputs.proposedBuilding?.buildingElements) {
           parsedInputs.proposedBuilding.buildingElements = parsedInputs.proposedBuilding.buildingElements.map((el: any) => ({
             ...el,
-            category: el.category || 'Above Grade Element'
+            category: el.category || 'aboveGrade'
           }));
         }
         
@@ -350,8 +336,8 @@ const HeatTransferCalculator = () => {
     const buildingColumns = Array.isArray(inputs.buildingColumns) ? inputs.buildingColumns : [];
     
     // Use buildingColumns if available, otherwise fall back to legacy buildings
-    const currentBuilding = buildingColumns.find(col => col.id === 'current')?.building || inputs.currentBuilding;
-    const proposedBuilding = buildingColumns.find(col => col.id === 'proposed')?.building || inputs.proposedBuilding;
+    const currentBuilding = inputs.currentBuilding;
+    const proposedBuilding = inputs.proposedBuilding;
 
     // Ensure we have valid building data with proper array initialization
     if (!currentBuilding || !proposedBuilding) {
@@ -383,7 +369,7 @@ const HeatTransferCalculator = () => {
     const currentBuildingElements = Array.isArray(currentBuilding.buildingElements) ? currentBuilding.buildingElements : [];
     currentBuildingElements.forEach((element) => {
       switch (element.category) {
-        case 'Above Grade Element':
+        case 'aboveGrade':
           if (element.rValue) {
             currentEnvelopeHeatLoss += calculateHeatLoss(
               element.area,
@@ -397,7 +383,7 @@ const HeatTransferCalculator = () => {
             );
           }
           break;
-        case 'On/Sub-grade Slab':
+        case 'slab':
           if (element.fFactor && element.perimeter) {
             // F*Ls = Qc, then Qc*(HDD+CDD)*24 = Qannual
             const qc = element.fFactor * element.perimeter;
@@ -406,7 +392,7 @@ const HeatTransferCalculator = () => {
             currentEnvelopeHeatGain += qAnnual * (inputs.climateData.coolingDegreeDays / (inputs.climateData.heatingDegreeDays + inputs.climateData.coolingDegreeDays));
           }
           break;
-        case 'Basement Walls':
+        case 'basementWall':
           if (element.cFactor) {
             // C-factor works like U-value in relationship to area
             currentEnvelopeHeatLoss += calculateHeatLoss(
@@ -479,7 +465,7 @@ const HeatTransferCalculator = () => {
     const proposedBuildingElements = Array.isArray(proposedBuilding.buildingElements) ? proposedBuilding.buildingElements : [];
     proposedBuildingElements.forEach((element) => {
       switch (element.category) {
-        case 'Above Grade Element':
+        case 'aboveGrade':
           if (element.rValue) {
             proposedEnvelopeHeatLoss += calculateHeatLoss(
               element.area,
@@ -493,7 +479,7 @@ const HeatTransferCalculator = () => {
             );
           }
           break;
-        case 'On/Sub-grade Slab':
+        case 'slab':
           if (element.fFactor && element.perimeter) {
             // F*Ls = Qc, then Qc*(HDD+CDD)*24 = Qannual
             const qc = element.fFactor * element.perimeter;
@@ -502,7 +488,7 @@ const HeatTransferCalculator = () => {
             proposedEnvelopeHeatGain += qAnnual * (inputs.climateData.coolingDegreeDays / (inputs.climateData.heatingDegreeDays + inputs.climateData.coolingDegreeDays));
           }
           break;
-        case 'Basement Walls':
+        case 'basementWall':
           if (element.cFactor) {
             // C-factor works like U-value in relationship to area
             proposedEnvelopeHeatLoss += calculateHeatLoss(

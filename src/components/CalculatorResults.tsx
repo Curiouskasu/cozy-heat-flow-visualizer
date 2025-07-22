@@ -47,18 +47,17 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
     // Add all buildings from buildingColumns
     if (inputs.buildingColumns && Array.isArray(inputs.buildingColumns)) {
       inputs.buildingColumns.forEach((column) => {
-        if (column.building) {
-          const building = column.building;
+        const elements = column.elements || [];
           let envelopeHeatLoss = 0;
           let envelopeHeatGain = 0;
           let solarHeatGain = 0;
           let totalPerimeter = 0;
 
           // Calculate from building elements
-          if (Array.isArray(building.buildingElements)) {
-            building.buildingElements.forEach((element) => {
+          if (Array.isArray(elements)) {
+            elements.forEach((element) => {
               switch (element.category) {
-                case 'Above Grade Element':
+                case 'aboveGrade':
                   if (element.rValue && element.area) {
                     envelopeHeatLoss += calculateHeatLoss(
                       element.area,
@@ -72,7 +71,7 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
                     );
                   }
                   break;
-                case 'On/Sub-grade Slab':
+                case 'slab':
                   if (element.fFactor && element.perimeter) {
                     const qc = element.fFactor * element.perimeter;
                     const qAnnual = qc * (inputs.climateData.heatingDegreeDays + inputs.climateData.coolingDegreeDays) * 24;
@@ -80,7 +79,7 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
                     envelopeHeatGain += qAnnual * (inputs.climateData.coolingDegreeDays / (inputs.climateData.heatingDegreeDays + inputs.climateData.coolingDegreeDays));
                   }
                   break;
-                case 'Basement Walls':
+                case 'basementWall':
                   if (element.cFactor && element.area) {
                     envelopeHeatLoss += calculateHeatLoss(
                       element.area,
@@ -98,12 +97,10 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
             });
           }
 
-          // Calculate from glazing elements
-          if (Array.isArray(building.glazingElements)) {
-            building.glazingElements.forEach((glazing) => {
-              const glazingArea = glazing.northArea + glazing.southArea + glazing.eastArea + glazing.westArea;
-              totalPerimeter += glazing.perimeter;
-
+          // Calculate from glazing elements (legacy support)
+          const glazingElements = elements.filter(el => el.category === 'glazing');
+          glazingElements.forEach((glazing) => {
+              const glazingArea = glazing.area || 0;
               if (glazing.uValue && glazingArea > 0) {
                 envelopeHeatLoss += calculateHeatLoss(
                   glazingArea,
@@ -116,16 +113,7 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
                   inputs.climateData.coolingDegreeDays
                 );
               }
-
-              if (glazing.shgc) {
-                solarHeatGain += 
-                  calculateSolarHeatGain(glazing.northArea, glazing.shgc, inputs.climateData.northSolarRadiation) +
-                  calculateSolarHeatGain(glazing.southArea, glazing.shgc, inputs.climateData.southSolarRadiation) +
-                  calculateSolarHeatGain(glazing.eastArea, glazing.shgc, inputs.climateData.eastSolarRadiation) +
-                  calculateSolarHeatGain(glazing.westArea, glazing.shgc, inputs.climateData.westSolarRadiation);
-              }
             });
-          }
 
           const infiltrationHeatLoss = calculateInfiltrationHeatLoss(
             totalPerimeter,
@@ -144,7 +132,7 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
           buildings.push({
             name: column.name,
             energy: Math.round(totalEnergy),
-            data: building,
+            data: {} as BuildingData,
             breakdown: {
               envelopeHeatLoss: Math.round(envelopeHeatLoss),
               envelopeHeatGain: Math.round(envelopeHeatGain),
@@ -153,7 +141,6 @@ const CalculatorResultsComponent = ({ inputs, results }: Props) => {
               infiltrationHeatGain: Math.round(infiltrationHeatGain),
             }
           });
-        }
       });
     }
 
