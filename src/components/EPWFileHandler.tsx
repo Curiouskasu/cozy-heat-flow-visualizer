@@ -8,10 +8,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, X, FileText } from "lucide-react";
 
 const DEFAULT_HEAT_BASE = 18;
-const DEFAULT_COOL_BASE = 18;
+const DEFAULT_COOL_BASE = 24;
+
+// Helper to match columns by substring, works for any EPW download
+function getColumnIndex(headers, substrings) {
+  for (let i = 0; i < headers.length; i++) {
+    const h = headers[i].toLowerCase();
+    if (substrings.some(sub => h.includes(sub))) return i;
+  }
+  return -1;
+}
 
 function sunAzimuthToFacadeIdx(azimuth) {
-  // North: 315 to 45, East: 45-135, South: 135-225, West: 225-315
   azimuth = (Number(azimuth) + 360) % 360;
   if (azimuth > 315 || azimuth <= 45) return 0; // North
   if (azimuth > 45 && azimuth <= 135) return 1; // East
@@ -25,7 +33,6 @@ function safeParseFloat(val) {
   return isNaN(n) ? 0 : n;
 }
 
-// MAIN COMPONENT
 const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
   const fileInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState("upload");
@@ -45,7 +52,6 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
     coolingBaseTemp: manualData.coolingBaseTemp,
   });
 
-  // ---- EPW FILE PARSING & COMPUTATION ----
   const handleFileUpload = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -55,29 +61,31 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const lines = e.target.result.split(/\r?\n/).filter(l => !!l.trim());
-        // Find header: EPW spec is line 8: header. Data starts at 9 (0-based)
+        const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+        // EPW: line 8 (index 8) is the column header
         const headerLine = lines[8];
-        if (!headerLine) throw new Error("EPW: No column header row found.");
-        const colNames = headerLine.split(",").map((x) => x.trim().toLowerCase());
+        const headers = headerLine.split(",").map(s => s.trim());
+        // These should both succeed in a valid EPW file from EnergyPlus
+        const idxDryBulb = getColumnIndex(headers, ["dry bulb"]);
+        const idxGHorRad = getColumnIndex(headers, ["global horizontal", "global horiz"]);
+        const idxAzimuth = getColumnIndex(headers, ["azimuth"]);
+        const idxHour = 3; // Standard in EPW: 3 = Hour (1-based)
 
-        // Indexes
-        const idxDryBulb = colNames.findIndex(k => k.includes("dry bulb"));
-        const idxGHorRad = colNames.findIndex(k => k.includes("global horiz"));
-        let idxAzimuth = colNames.findIndex(k => k.includes("azimuth"));
-        const idxHour = 1; // EPW: 0=Year, 1=Month, 2=Day, 3=Hour
-
+        // Defensive debug for failed extraction:
         if (idxDryBulb === -1 || idxGHorRad === -1) {
-          throw new Error("EPW file missing required columns: Dry Bulb or Global Horizontal Radiation.");
+          console.log("EPW Headers found:", headers);
+          throw new Error(
+            "EPW file missing required columns: Dry Bulb or Global Horizontal Radiation.\n" +
+            "Found headers: " + headers.join(", ")
+          );
         }
-        // If azimuth missing, fallback to -1 index.
 
         let hddHours = 0, cddHours = 0;
         let eds = [0, 0, 0, 0]; // N, E, S, W
 
-        for (let i = 9; i < lines.length; ++i) {
+        for (let i = 9; i < lines.length; ++i) { // Start after column header
           const cols = lines[i].split(",");
-          if (cols.length < colNames.length) continue;
+          if (cols.length < headers.length) continue;
           const tdb = safeParseFloat(cols[idxDryBulb]);
           if (tdb !== undefined) {
             if (tdb < heatingBaseTemp) hddHours += (heatingBaseTemp - tdb);
@@ -85,21 +93,19 @@ const EPWFileHandler = ({ climateData, onClimateDataChange }) => {
           }
           const ghr = safeParseFloat(cols[idxGHorRad]);
 
-          // FACADE MAPPING
           let facadeIdx = 2; // Default: south
           if (idxAzimuth !== -1) {
             const az = safeParseFloat(cols[idxAzimuth]);
             facadeIdx = sunAzimuthToFacadeIdx(az);
           } else {
-            // Approximate based on hour
             const hour = safeParseFloat(cols[idxHour]);
-            if (hour >= 6 && hour < 12) facadeIdx = 1;
-            else if (hour >= 12 && hour < 18) facadeIdx = 3;
-            else if (hour >= 18 || hour < 6) facadeIdx = 0;
+            if (hour >= 6 && hour < 12) facadeIdx = 1; // East
+            else if (hour >= 12 && hour < 18) facadeIdx = 3; // West
+            else if (hour >= 18 || hour < 6) facadeIdx = 0; // North
           }
           eds[facadeIdx] += ghr;
         }
-        // Convert h/c degree-hours to degree-days
+
         const heatingDegreeDays = +(hddHours / 24).toFixed(1);
         const coolingDegreeDays = +(cddHours / 24).toFixed(1);
         const [north, east, south, west] = eds.map(w => +w.toFixed(1));
